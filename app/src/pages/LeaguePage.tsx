@@ -24,7 +24,7 @@ function TableSection({ gameId, onTeam }: { gameId: string; onTeam: (id: string)
 export default function LeaguePage({ id }: { id: string }) {
   const nav = useNav()
   const [tab, setTab] = useState<'games' | 'results' | 'table'>('games')
-  const { data, error, loading, reload } = useFetch(() => fetchLeague(id), [id], 30000)
+  const { data, error, loading, reload } = useFetch(() => fetchLeague(id), [id], 10000)
 
   if (data) {
     registerLeague(data.league)

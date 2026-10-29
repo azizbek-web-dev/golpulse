@@ -289,3 +289,16 @@ h3 { margin: 0; }
 .standings .form-dot { width: 13px; height: 13px; font-size: 8px; }
 .standings .team-cell-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 92px; display: inline-block; vertical-align: middle; }
 .date-nav { justify-content: center; }
+
+/* Hisob o'zgarishi: qator yashil chaqnaydi, raqam "sakrab" yangilanadi */
+@keyframes scoreFlash {
+  0% { background: rgba(0, 210, 106, 0.30); }
+  100% { background: transparent; }
+}
+.match-row.score-flash { animation: scoreFlash 1.6s ease-out; }
+@keyframes scorePop {
+  0% { transform: scale(1.55); color: var(--accent); }
+  100% { transform: scale(1); }
+}
+.match-row-score.pop { display: inline-block; animation: scorePop 0.7s ease-out; }
+.score-num.pop { display: inline-block; animation: scorePop 0.7s ease-out; }

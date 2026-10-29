@@ -50,6 +50,16 @@ function cache_get(string $key, int $ttl) {
 function cache_put(string $key, $body): void {
     $f = cache_dir() . '/' . md5($key) . '.json';
     @file_put_contents($f, json_encode(['t' => time(), 'body' => $body]), LOCK_EX);
+    // Muvaffaqiyatli yangilash — SWR lockni ham yangilaydi (TTL ichida qayta navbatga tushmaydi)
+    @file_put_contents(cache_dir() . '/' . md5('lock:' . $key) . '.lock', (string)time());
+}
+/** SWR lock: bitta path TTL ichida ko'pi bilan bir marta fonda yangilanadi (upstream himoyasi) */
+function refresh_lock_acquire(string $key, int $ttl): bool {
+    $f = cache_dir() . '/' . md5('lock:' . $key) . '.lock';
+    $age = is_file($f) ? time() - filemtime($f) : PHP_INT_MAX;
+    if ($age < $ttl) return false;
+    @file_put_contents($f, (string)time());
+    return true;
 }
 
 // ---------------- Yuqori oqim (betgo API) ----------------
@@ -69,15 +79,39 @@ function http_get_json(string $url, int $timeout = 25) {
     $v = json_decode($raw, true);
     return is_array($v) ? $v : null;
 }
-/** Keshlangan chaqiruv: yangi bo'lsa keshdan, bo'lmasa tarmoqdan; xatoda eski kesh (stale). */
+$GLOBALS['gp_refresh_queue'] = [];
+/**
+ * Keshlangan chaqiruv + stale-while-revalidate:
+ * - fresh (age <= TTL) — keshdan;
+ * - stale, lekin age <= 3*TTL — kesh darhol qaytadi, yangilash navbatga qo'yiladi
+ *   (router javobni yuborgach fonda bajariladi — foydalanuvchi kutmaydi);
+ * - undan eski / kesh yo'q — sinxron tarmoq (qisqa timeout); xatoda eski kesh (stale-if-error).
+ * Upstream himoyasi: har bir path uchun chaqiruvlar TTL dan tez bo'lmaydi —
+ * SWR yangilash ham lock bilan TTL da ko'pi bilan bir marta navbatga tushadi.
+ */
 function api(string $path, int $ttl) {
     $key = 'api:' . $path;
     $c = cache_get($key, $ttl);
     if ($c && $c['fresh']) return $c['body'];
-    $v = http_get_json(API . $path);
+    if ($c && $c['age'] <= $ttl * 3) {
+        if (refresh_lock_acquire($key, $ttl)) $GLOBALS['gp_refresh_queue'][$path] = true;
+        return $c['body']; // SWR: stale darhol
+    }
+    $v = http_get_json(API . $path, 10);
     if ($v !== null && !empty($v['success'])) { cache_put($key, $v); return $v; }
-    if ($c) return $c['body']; // stale
+    if ($c) return $c['body']; // stale (xato holatda)
     return $v; // null yoki success=false javob — chaqiruvchi o'zi hal qiladi
+}
+/** Navbatdagi SWR yangilashlarni bajarish (javob mijozga yuborilgandan keyin chaqiriladi) */
+function gp_flush_refresh_queue(): void {
+    $q = $GLOBALS['gp_refresh_queue'] ?? [];
+    $GLOBALS['gp_refresh_queue'] = [];
+    $n = 0;
+    foreach (array_keys($q) as $path) {
+        if (++$n > 6) break; // bitta so'rovda cheklov — worker uzoq band bo'lmasin
+        $v = http_get_json(API . $path, 8);
+        if ($v !== null && !empty($v['success'])) cache_put('api:' . $path, $v);
+    }
 }
 function api_data(string $path, int $ttl) {
     $v = api($path, $ttl);
@@ -169,6 +203,10 @@ function match_row(array $g, $ligaId = null, $ligaName = null): ?array {
         $st = live_status($g, $sc);
         $row['status'] = $st['status'];
         if ($st['minute'] !== null) $row['minute'] = $st['minute'];
+        // Lokal daqiqa taymeri uchun: fid soati (soniya) va yurish holati
+        $tm = $sc['timer'] ?? [];
+        if (isset($tm['timeSec'])) $row['timeSec'] = (int)$tm['timeSec'];
+        $row['timeRun'] = (bool)($tm['timeRun'] ?? true);
         $row['homeScore'] = isset($sc['scoreOpp1']) ? (int)$sc['scoreOpp1'] : 0;
         $row['awayScore'] = isset($sc['scoreOpp2']) ? (int)$sc['scoreOpp2'] : 0;
         // 1-bo'lim hisobi (2-bo'lim ketayotgan yoki tugagan bo'lsa)
@@ -256,7 +294,7 @@ function stat_lines(array $periodStatistic): array {
 }
 
 function fetch_stats(string $gameId): ?array {
-    $data = api_data('/game-statistics?game_id=' . urlencode($gameId) . '&sport=futbol&lng=uz', 15);
+    $data = api_data('/game-statistics?game_id=' . urlencode($gameId) . '&sport=futbol&lng=uz', 5);
     $resp = is_array($data) ? ($data['response'] ?? null) : null;
     if (!is_array($resp)) return null;
     $groups = $resp['gameStatistic'] ?? [];
@@ -302,7 +340,7 @@ function period_label(string $title): string {
     return $title;
 }
 function fetch_events(string $gameId, string $homeClId, string $awayClId): ?array {
-    $data = api_data('/game-events?game_id=' . urlencode($gameId) . '&sport=futbol&lng=uz', 15);
+    $data = api_data('/game-events?game_id=' . urlencode($gameId) . '&sport=futbol&lng=uz', 5);
     if (!is_array($data)) return null;
     $resp = $data['response'] ?? null;
     if (!is_array($resp) || !$resp) return null;
@@ -354,7 +392,7 @@ function fetch_events(string $gameId, string $homeClId, string $awayClId): ?arra
 
 // ---------------- Tarkiblar o'girish ----------------
 function fetch_lineups(string $gameId, string $homeClId, string $awayClId): ?array {
-    $data = api_data('/lineups?game_id=' . urlencode($gameId) . '&sport=futbol&lng=uz', 30);
+    $data = api_data('/lineups?game_id=' . urlencode($gameId) . '&sport=futbol&lng=uz', 15);
     if (!is_array($data)) return null;
     $resp = $data['response'] ?? null;
     if (!is_array($resp) || count($resp) < 2) return null;
@@ -638,7 +676,7 @@ function finished_today(): array {
 }
 
 function action_live(): array {
-    $live = football_games('/live-matches?sport=1&lng=uz', 8);
+    $live = football_games('/live-matches?sport=1&lng=uz', 2);
     $line = football_games('/line-matches?sport=1&lng=uz', 30);
     $fin = finished_today();
     $meta = league_meta_map();
@@ -680,7 +718,7 @@ function action_live(): array {
 
 // ---------------- O'yin to'plami ----------------
 function action_match(string $id): ?array {
-    $detail = api_data('/match-detail?match_id=' . urlencode($id) . '&is_live=1&sport=1&lng=uz', 10);
+    $detail = api_data('/match-detail?match_id=' . urlencode($id) . '&is_live=1&sport=1&lng=uz', 5);
     $base = null; $isLiveDetail = false;
     if (is_array($detail) && isset($detail['opponent1'])) {
         $base = match_row($detail);
@@ -972,7 +1010,19 @@ try {
         http_response_code(404);
         echo json_encode(['success' => false, 'message' => 'not found'], JSON_UNESCAPED_UNICODE);
     } else {
+        if (is_array($out)) {
+            // v — kontent hashi: frontend javob o'zgarmaganini bilib, qayta render qilmaydi.
+            // Vaqt maydonlari (updatedAt/time) hashga kirmaydi — ular har javobda o'zgaradi.
+            $h = $out;
+            unset($h['updatedAt'], $h['time']);
+            $out['v'] = substr(md5(json_encode($h)), 0, 12);
+        }
         echo json_encode(['success' => true, 'data' => $out], JSON_UNESCAPED_UNICODE);
+        // SWR: javob mijozga ketgach, navbatdagi kesh yangilashlarni fonda bajaramiz
+        if (function_exists('fastcgi_finish_request')) {
+            fastcgi_finish_request();
+            gp_flush_refresh_queue();
+        }
     }
 } catch (Throwable $e) {
     http_response_code(500);

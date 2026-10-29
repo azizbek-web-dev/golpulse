@@ -21,13 +21,13 @@ const matchFilter = (f: Filter) => (m: ApiMatch) => {
 
 const MONTHS = ['yanvar', 'fevral', 'mart', 'aprel', 'may', 'iyun', 'iyul', 'avgust', 'sentabr', 'oktabr', 'noyabr', 'dekabr']
 
-/** Bosh/Jonli ro'yxat — real fid, liga guruhlari, 20 soniyalik avto-yangilanish */
+/** Bosh/Jonli ro'yxat — real fid, liga guruhlari, 5 soniyalik avto-yangilanish */
 export default function HomePage({ defaultFilter }: { defaultFilter: Filter }) {
   const nav = useNav()
   const [filter, setFilter] = useState<Filter>(defaultFilter)
   const [pinned, setPinned] = useState<Set<string>>(new Set())
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
-  const { data, error, loading, reload } = useFetch(fetchLive, [], 20000)
+  const { data, error, loading, reload } = useFetch(fetchLive, [], 5000)
 
   if (data) {
     for (const g of data.leagues) {

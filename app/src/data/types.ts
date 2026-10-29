@@ -43,6 +43,8 @@ export interface ApiMatch {
   away: TeamStub
   status: MatchStatus
   minute?: number | null
+  timeSec?: number // fid soati (soniya) — lokal daqiqa taymeri shundan yuradi
+  timeRun?: boolean
   periodScores: PeriodScore[]
   homeScore?: number | null
   awayScore?: number | null
@@ -62,6 +64,7 @@ export interface LiveData {
   leagues: LiveLeagueGroup[]
   counts: { live: number; finished: number; scheduled: number }
   updatedAt: number
+  v?: string // adapter kontent hashi — o'zgarmagan javobda qayta render bo'lmaydi
 }
 
 export type EventType = 'goal' | 'pen-goal' | 'yellow' | 'red' | 'sub' | 'pen-missed' | 'chance' | 'info'
@@ -132,11 +135,13 @@ export interface StandingRow {
 }
 
 export interface TableData {
+  v?: string
   title: string
   groups: Array<{ name: string; rows: StandingRow[] }>
 }
 
 export interface MatchBundle {
+  v?: string
   match: ApiMatch
   meta: {
     venue: string | null
@@ -154,6 +159,7 @@ export interface MatchBundle {
 }
 
 export interface LeaguePageData {
+  v?: string
   league: LeagueStub
   games: ApiMatch[]
   lastGames: ApiMatch[] | null
@@ -161,12 +167,14 @@ export interface LeaguePageData {
 }
 
 export interface SearchData {
+  v?: string
   teams: Array<TeamStub & { leagueName: string }>
   leagues: LeagueStub[]
   matches: ApiMatch[]
 }
 
 export interface TeamPageData {
+  v?: string
   team: TeamStub
   league: { id: string; name: string }
   coach: string | null
@@ -178,6 +186,7 @@ export interface TeamPageData {
 }
 
 export interface PlayerPageData {
+  v?: string
   player: LineupPlayer & { teamId: string }
   team: TeamStub
   teamRecent: TeamGameRow[]

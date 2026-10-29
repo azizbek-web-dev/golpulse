@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react'
 import type { ApiMatch, LeagueStub, StandingRow, StatLine } from './data/types'
 import { leagueInfo, localCrestFor, localLeagueLogo, teamInfo } from './api'
 import { IconChevronDown, IconChevronUp, IconGrid, IconPin, IconStar } from './icons'
@@ -92,6 +93,66 @@ export function StarBtn({ active, onToggle }: { active: boolean; onToggle: () =>
   )
 }
 
+// ---- Umumiy 1 soniyalik tick: bitta interval barcha jonli qatorlar uchun ----
+const tickSubs = new Set<() => void>()
+let tickTimer: number | null = null
+function useSecondTick(): void {
+  const [, setTick] = useState(0)
+  useEffect(() => {
+    const fn = () => setTick((t) => t + 1)
+    tickSubs.add(fn)
+    if (tickTimer === null) {
+      tickTimer = window.setInterval(() => { tickSubs.forEach((f) => f()) }, 1000)
+    }
+    return () => {
+      tickSubs.delete(fn)
+      if (tickSubs.size === 0 && tickTimer !== null) { window.clearInterval(tickTimer); tickTimer = null }
+    }
+  }, [])
+}
+
+/**
+ * Jonli daqiqa: server har so'rovda timeSec beradi — daqiqa mijozda soat kabi
+ * har soniya lokal yuradi (FlashScore hissi), har poll da server qiymati bilan
+ * qayta sinxronlanadi (drift <= poll oralig'i).
+ */
+export function useLiveMinute(m: ApiMatch | null): number | null {
+  useSecondTick()
+  const baseRef = useRef<{ id: string; sec: number; at: number }>({ id: '', sec: 0, at: 0 })
+  const serverSec = m?.timeSec
+  const matchId = m?.id
+  useEffect(() => {
+    if (matchId && serverSec != null) {
+      baseRef.current = { id: matchId, sec: serverSec, at: Date.now() }
+    }
+  }, [matchId, serverSec])
+  if (!m) return null
+  if (m.status !== 'live' || serverSec == null || m.timeRun === false) return m.minute ?? null
+  const b = baseRef.current
+  if (b.id !== m.id) return m.minute ?? Math.floor(serverSec / 60)
+  const local = Math.floor((b.sec + (Date.now() - b.at) / 1000) / 60)
+  return Math.max(local, m.minute ?? 0)
+}
+
+/** Hisob o'zgarganda qator chaqnashi (flash) uchun holat */
+function useScoreFlash(m: ApiMatch): boolean {
+  const [flash, setFlash] = useState(false)
+  const prevRef = useRef<{ h: number | null | undefined; a: number | null | undefined; seen: boolean }>({
+    h: undefined, a: undefined, seen: false,
+  })
+  useEffect(() => {
+    const p = prevRef.current
+    if (p.seen && (p.h !== m.homeScore || p.a !== m.awayScore)) {
+      setFlash(true)
+      const t = window.setTimeout(() => setFlash(false), 1700)
+      prevRef.current = { h: m.homeScore, a: m.awayScore, seen: true }
+      return () => window.clearTimeout(t)
+    }
+    prevRef.current = { h: m.homeScore, a: m.awayScore, seen: true }
+  }, [m.homeScore, m.awayScore])
+  return flash
+}
+
 export function statusLabel(m: ApiMatch): { text: string; live: boolean } {
   switch (m.status) {
     case 'live': return { text: `${m.minute ?? 0}'`, live: true }
@@ -103,17 +164,24 @@ export function statusLabel(m: ApiMatch): { text: string; live: boolean } {
 
 /** Ikki qatorli o'yin qatori (FlashScore modeli) */
 export function MatchRow({ match, onOpen }: { match: ApiMatch; onOpen: (id: string) => void }) {
-  const st = statusLabel(match)
+  const liveMinute = useLiveMinute(match)
+  const flash = useScoreFlash(match)
+  const base = statusLabel(match)
+  const st = match.status === 'live' && liveMinute !== null
+    ? { text: `${liveMinute}'`, live: true }
+    : base
   const showScore = match.status !== 'scheduled'
   const row = (team: ApiMatch['home'], score?: number | null) => (
     <div className="match-row-team">
       <Crest teamId={team.id} />
       <span className="match-row-name">{team.name}</span>
-      <span className={`match-row-score${st.live ? ' live' : ''}`}>{showScore && score !== null && score !== undefined ? score : ''}</span>
+      {showScore && score !== null && score !== undefined
+        ? <span key={score} className={`match-row-score pop${st.live ? ' live' : ''}`}>{score}</span>
+        : <span className={`match-row-score${st.live ? ' live' : ''}`} />}
     </div>
   )
   return (
-    <button className="match-row" onClick={() => onOpen(match.id)}>
+    <button className={`match-row${flash ? ' score-flash' : ''}`} onClick={() => onOpen(match.id)}>
       <div className="match-row-main">
         {row(match.home, match.homeScore)}
         {row(match.away, match.awayScore)}

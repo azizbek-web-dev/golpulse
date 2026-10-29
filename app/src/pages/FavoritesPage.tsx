@@ -11,7 +11,7 @@ export default function FavoritesPage() {
   const nav = useNav()
   const [chip, setChip] = useState<(typeof CHIPS)[number]>('Timeline')
   const favs = [...nav.favorites]
-  const { data, error, loading, reload } = useFetch(fetchLive, [], 30000)
+  const { data, error, loading, reload } = useFetch(fetchLive, [], 5000)
 
   if (data) for (const g of data.leagues) for (const m of g.games) { registerTeam(m.home); registerTeam(m.away) }
 

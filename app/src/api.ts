@@ -136,23 +136,57 @@ export function useFetch<T>(fn: () => Promise<T>, deps: unknown[], pollMs?: numb
   useEffect(() => {
     aliveRef.current = true
     let timer: number | undefined
+    let inFlight = false
+
+    const schedule = () => {
+      if (timer) window.clearTimeout(timer)
+      timer = undefined
+      // Yashirin tab/Mini App da poll qilmaymiz (batareya + trafik tejash)
+      if (!pollMs || !aliveRef.current || document.hidden) return
+      timer = window.setTimeout(() => { void run(false) }, pollMs)
+    }
+
     const run = async (first: boolean) => {
+      if (inFlight) { schedule(); return }
+      inFlight = true
       if (first) setLoading(true)
       try {
         const d = await fnRef.current()
         if (!aliveRef.current) return
-        setData(d)
         setError(false)
+        // Adapter `v` hashi: kontent o'zgarmagan bo'lsa — qayta render yo'q
+        setData((prev) => {
+          if (prev === null) return d
+          const nv = (d as { v?: string } | null)?.v
+          const pv = (prev as { v?: string } | null)?.v
+          return nv && pv && nv === pv ? prev : d
+        })
       } catch {
         if (!aliveRef.current) return
         if (first) setError(true)
       } finally {
+        inFlight = false
         if (aliveRef.current && first) setLoading(false)
       }
-      if (pollMs && aliveRef.current) timer = window.setTimeout(() => run(false), pollMs)
+      schedule()
     }
-    run(true)
-    return () => { aliveRef.current = false; if (timer) window.clearTimeout(timer) }
+
+    const onVis = () => {
+      if (!aliveRef.current) return
+      if (document.hidden) {
+        if (timer) window.clearTimeout(timer)
+        timer = undefined
+      } else {
+        void run(false) // qayta ko'ringanda darhol yangilash, keyin poll davom etadi
+      }
+    }
+    document.addEventListener('visibilitychange', onVis)
+    void run(true)
+    return () => {
+      aliveRef.current = false
+      document.removeEventListener('visibilitychange', onVis)
+      if (timer) window.clearTimeout(timer)
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [...deps, tick, pollMs])
 

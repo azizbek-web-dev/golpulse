@@ -1,7 +1,7 @@
-import { useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { fetchMatch, registerTeam, teamInfo, useFetch } from '../api'
 import type { LineupPlayer, MatchBundle, MatchEvent } from '../data/types'
-import { Crest, ErrorBox, LeagueLogo, RatingPill, Skeleton, StandingsTable, StarBtn, StatBar } from '../components'
+import { Crest, ErrorBox, LeagueLogo, RatingPill, Skeleton, StandingsTable, StarBtn, StatBar, useLiveMinute } from '../components'
 import { IconBall, IconCard, IconMapPin, IconSub, IconTarget } from '../icons'
 import { useNav } from '../nav'
 
@@ -210,13 +210,15 @@ export default function MatchPage({ id }: { id: string }) {
   const nav = useNav()
   const [mainTab, setMainTab] = useState<'game' | 'h2h' | 'table'>('game')
   const [subTab, setSubTab] = useState<'events' | 'stats' | 'lineups'>('events')
-  const [poll, setPoll] = useState<number | undefined>(undefined)
-  const { data: bundle, error, loading, reload } = useFetch(() => fetchMatch(id), [id], poll)
-
-  // Jonli o'yin bo'lsa 30 soniyada yangilab turamiz, tugasa to'xtatamiz
+  // Polling: jonli/tanaffus — 5s (BetGO web darajasida), tugagan/rejadagi — 60s
+  const [pollMs, setPollMs] = useState(5000)
+  const { data: bundle, error, loading, reload } = useFetch(() => fetchMatch(id), [id], pollMs)
   const status = bundle?.match.status
-  if ((status === 'live' || status === 'halftime') && poll === undefined) setPoll(30000)
-  if ((status === 'finished' || status === 'scheduled') && poll !== undefined) setPoll(undefined)
+  useEffect(() => {
+    if (!status) return
+    setPollMs(status === 'live' || status === 'halftime' ? 5000 : 60000)
+  }, [status])
+  const liveMinute = useLiveMinute(bundle?.match ?? null)
 
   if (bundle) {
     registerTeam(bundle.match.home)
@@ -229,7 +231,7 @@ export default function MatchPage({ id }: { id: string }) {
 
   const match = bundle.match
   const statusText =
-    match.status === 'live' ? `${match.minute ?? 0}' — Jonli` :
+    match.status === 'live' ? `${liveMinute ?? match.minute ?? 0}' — Jonli` :
     match.status === 'halftime' ? 'Tanaffus' :
     match.status === 'finished' ? 'Tugagan' : `Boshlanish: ${match.startTime}`
 
@@ -237,7 +239,7 @@ export default function MatchPage({ id }: { id: string }) {
     <button className="score-side" onClick={() => nav.openTeam(team.id)}>
       <Crest teamId={team.id} size={54} />
       <span className="score-team">{team.name}</span>
-      {match.status !== 'scheduled' && <span className="score-num">{score ?? ''}</span>}
+      {match.status !== 'scheduled' && <span key={score ?? ''} className="score-num pop">{score ?? ''}</span>}
     </button>
   )
 
