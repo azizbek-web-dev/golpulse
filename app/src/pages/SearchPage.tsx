@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { leagues, players, teams } from '../data/mock'
-import { Crest, StarBtn } from '../components'
+import { Crest, LeagueLogo, StarBtn } from '../components'
+import { IconSearch, IconX } from '../icons'
 import { useNav } from '../nav'
 
 const norm = (s: string) => s.toLowerCase().replace(/[''`]/g, '')
@@ -38,14 +39,14 @@ export default function SearchPage() {
   return (
     <div className="page">
       <div className="search-box">
-        <span>🔍</span>
+        <span className="search-icon"><IconSearch size={18} /></span>
         <input
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="Jamoa, o'yinchi yoki liga qidiring"
           autoFocus
         />
-        {q && <button className="icon-btn" onClick={() => setQ('')}>✕</button>}
+        {q && <button className="icon-btn" onClick={() => setQ('')}><IconX size={16} /></button>}
       </div>
 
       {!query && (
@@ -55,7 +56,7 @@ export default function SearchPage() {
           <div className="section-label">Mashhur ligalar</div>
           {leagues.slice(0, 3).map((l) => (
             <button key={l.id} className="search-row-main full" onClick={() => nav.openLeague(l.id)}>
-              <span className="league-flag big">{l.flag}</span>
+              <LeagueLogo leagueId={l.id} size={32} />
               <span><b>{l.name}</b><small>{l.country}</small></span>
             </button>
           ))}
@@ -69,7 +70,7 @@ export default function SearchPage() {
           <div className="section-label">Ligalar</div>
           {foundLeagues.map((l) => (
             <button key={l.id} className="search-row-main full" onClick={() => nav.openLeague(l.id)}>
-              <span className="league-flag big">{l.flag}</span>
+              <LeagueLogo leagueId={l.id} size={32} />
               <span><b>{l.name}</b><small>{l.country}</small></span>
             </button>
           ))}

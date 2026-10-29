@@ -1,11 +1,17 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { matchById, teamById, leagueById, standingsFull, h2hSummary, h2hPast } from '../data/mock'
 import type { Match, MatchEvent } from '../data/types'
-import { Crest, MomentumChart, RatingPill, StandingsTable, StarBtn, StatBar, teamInfo } from '../components'
+import { asset, Crest, LeagueLogo, MomentumChart, RatingPill, StandingsTable, StarBtn, StatBar, teamInfo } from '../components'
+import { IconBall, IconCard, IconMapPin, IconSub, IconTarget } from '../icons'
 import { useNav } from '../nav'
 
-const EVENT_ICON: Record<MatchEvent['type'], string> = {
-  goal: '⚽', 'pen-goal': '⚽', yellow: '🟨', red: '🟥', sub: '🔄', chance: '🎯',
+const EVENT_ICON: Record<MatchEvent['type'], ReactNode> = {
+  goal: <IconBall size={16} />,
+  'pen-goal': <IconBall size={16} />,
+  yellow: <IconCard size={15} color="#FFC531" />,
+  red: <IconCard size={15} color="#FF453A" />,
+  sub: <IconSub size={16} />,
+  chance: <IconTarget size={16} />,
 }
 
 // Sxema koordinatalari: [x%, y%] — y o'z darvozasidan (0) raqib darvozasigacha (100)
@@ -49,7 +55,7 @@ function EventsTab({ match }: { match: Match }) {
       <div className="half-head">1-bo'lim — {ht}</div>
       {first.map((e, i) => <EventRow key={i} ev={e} homeId={match.homeId} />)}
       <div className="match-meta">
-        {match.venue && <span>🏟 {match.venue}</span>}
+        {match.venue && <span><IconMapPin size={13} /> {match.venue}</span>}
         {match.referee && <span>Hakam: {match.referee}</span>}
       </div>
     </div>
@@ -78,15 +84,23 @@ function StatsTab({ match }: { match: Match }) {
 }
 
 function Pitch({ match }: { match: Match }) {
-  const renderTeam = (lineup: NonNullable<Match['homeLineup']>, formation: string, isHome: boolean) => {
+  const renderTeam = (lineup: NonNullable<Match['homeLineup']>, formation: string, isHome: boolean, teamId: string) => {
     const coords = FORMATIONS[formation] ?? FORMATIONS['4-2-3-1']
+    const crest = teamInfo(teamId).crest
     return lineup.map((p, i) => {
       const [x, y] = coords[i] ?? [50, 50]
       // Chetlardan ichkari tortamiz — darvozabon/o'yinchi bloki maydon tashqarisiga chiqmasin
       const top = isHome ? 5 + (y / 2) * 0.9 : 95 - (y / 2) * 0.9
       return (
         <div key={i} className="pitch-player" style={{ left: `${x}%`, top: `${top}%` }}>
-          <span className={`pitch-dot${isHome ? ' home' : ' away'}`}>{p.number}</span>
+          {crest ? (
+            <span className="pitch-dotwrap">
+              <img className="pitch-crest" src={asset(crest)} alt="" />
+              <span className="pitch-num">{p.number}</span>
+            </span>
+          ) : (
+            <span className={`pitch-dot${isHome ? ' home' : ' away'}`}>{p.number}</span>
+          )}
           <span className="pitch-name">{p.name.split(' ').slice(-1)[0]}</span>
           {p.rating !== undefined && <RatingPill value={p.rating} />}
         </div>
@@ -98,8 +112,8 @@ function Pitch({ match }: { match: Match }) {
     <div className="pitch">
       <div className="pitch-line mid" /><div className="pitch-circle" />
       <div className="pitch-line box-top" /><div className="pitch-line box-bottom" />
-      {renderTeam(match.homeLineup, match.homeFormation ?? '4-2-3-1', true)}
-      {renderTeam(match.awayLineup, match.awayFormation ?? '4-2-3-1', false)}
+      {renderTeam(match.homeLineup, match.homeFormation ?? '4-2-3-1', true, match.homeId)}
+      {renderTeam(match.awayLineup, match.awayFormation ?? '4-2-3-1', false, match.awayId)}
     </div>
   )
 }
@@ -123,8 +137,8 @@ function LineupsTab({ match }: { match: Match }) {
           <span className="lineup-name">
             <span className="lineup-name-line">
               {p.name}
-              {p.goals ? <em>⚽×{p.goals}</em> : null}
-              {p.yellow ? <em>🟨</em> : null}
+              {p.goals ? <em><IconBall size={13} />×{p.goals}</em> : null}
+              {p.yellow ? <em><IconCard size={12} color="#FFC531" /></em> : null}
             </span>
             <small>{teamInfo(teamId).short} · {p.pos}</small>
           </span>
@@ -198,7 +212,7 @@ export default function MatchPage({ id }: { id: string }) {
 
   return (
     <div className="page detail">
-      <div className="match-league-line">{league.flag} {league.name} · {match.dateLabel}</div>
+      <div className="match-league-line"><LeagueLogo leagueId={league.id} size={16} /> {league.name} · {match.dateLabel}</div>
       <div className="scoreboard">
         {side(match.homeId, match.homeScore)}
         <div className="score-center">

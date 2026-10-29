@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { leagues, matches } from '../data/mock'
 import type { Match } from '../data/types'
 import { LeagueHeader, MatchRow } from '../components'
+import { IconCalendar, IconChevronLeft, IconChevronRight } from '../icons'
 import { useNav } from '../nav'
 
 type Filter = 'all' | 'live' | 'finished' | 'scheduled'
@@ -43,9 +44,9 @@ export default function HomePage({ defaultFilter }: { defaultFilter: Filter }) {
   return (
     <div className="page">
       <div className="date-nav">
-        <button className="icon-btn">‹</button>
-        <span className="date-nav-label">📅 Bugun, 29-oktabr</span>
-        <button className="icon-btn">›</button>
+        <button className="icon-btn"><IconChevronLeft size={18} /></button>
+        <span className="date-nav-label"><IconCalendar size={15} /> Bugun, 29-oktabr</span>
+        <button className="icon-btn"><IconChevronRight size={18} /></button>
       </div>
 
       <div className="chips">

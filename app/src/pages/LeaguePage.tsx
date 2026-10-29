@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { leagueById, matchesByLeague, standingsFull } from '../data/mock'
-import { MatchRow, StandingsTable } from '../components'
+import { LeagueLogo, MatchRow, StandingsTable } from '../components'
 import { useNav } from '../nav'
 
 export default function LeaguePage({ id }: { id: string }) {
@@ -13,7 +13,7 @@ export default function LeaguePage({ id }: { id: string }) {
   return (
     <div className="page detail">
       <div className="league-hero">
-        <span className="league-flag hero">{league.flag}</span>
+        <LeagueLogo leagueId={id} size={52} />
         <div>
           <h2>{league.name}</h2>
           <div className="league-hero-sub">{league.country} · Mavsum {league.season}{league.followers ? ` · ${league.followers} kuzatuvchi` : ''}</div>

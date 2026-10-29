@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { matches } from '../data/mock'
 import { Crest, MatchRow, teamInfo } from '../components'
+import { IconSearch, IconStar } from '../icons'
 import { useNav } from '../nav'
 
 const CHIPS = ['Timeline', 'Kecha', 'Jonli'] as const
@@ -27,11 +28,11 @@ export default function FavoritesPage() {
 
       {favs.length === 0 ? (
         <div className="fav-empty">
-          <div className="fav-empty-star">⭐</div>
+          <div className="fav-empty-star"><IconStar size={52} filled /></div>
           <h3>Sevimli jamoalaringizni qo'shing</h3>
           <p>Sevimli jamoalaringizning barcha o'yinlari va muhim yangiliklari bir joyda bo'ladi.</p>
-          <button className="primary-btn" onClick={() => nav.goTab('search')}>🔍 Jamoa qidirish</button>
-          <p className="fav-empty-hint">Yoki istalgan jamoa yonidagi ☆ yulduzni bosing</p>
+          <button className="primary-btn" onClick={() => nav.goTab('search')}><IconSearch size={16} /> Jamoa qidirish</button>
+          <p className="fav-empty-hint">Yoki istalgan jamoa yonidagi yulduz belgisini bosing</p>
         </div>
       ) : (
         <>

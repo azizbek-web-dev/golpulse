@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { NavContext, type DetailRoute, type Nav, type TabKey } from './nav'
 import { tg, inTelegram } from './telegram'
+import { IconActivity, IconBall, IconChevronLeft, IconSearch, IconStar, IconTrophy } from './icons'
 import HomePage from './pages/HomePage'
 import LeaguesPage from './pages/LeaguesPage'
 import LeaguePage from './pages/LeaguePage'
@@ -10,12 +11,12 @@ import PlayerPage from './pages/PlayerPage'
 import SearchPage from './pages/SearchPage'
 import FavoritesPage from './pages/FavoritesPage'
 
-const TABS: Array<{ key: TabKey; label: string; icon: string }> = [
-  { key: 'live', label: 'Jonli', icon: '🔴' },
-  { key: 'matches', label: "O'yinlar", icon: '⚽' },
-  { key: 'leagues', label: 'Ligalar', icon: '🏆' },
-  { key: 'favorites', label: 'Sevimlilar', icon: '⭐' },
-  { key: 'search', label: 'Qidiruv', icon: '🔍' },
+const TABS: Array<{ key: TabKey; label: string; icon: ReactNode }> = [
+  { key: 'live', label: 'Jonli', icon: <IconActivity size={21} /> },
+  { key: 'matches', label: "O'yinlar", icon: <IconBall size={21} /> },
+  { key: 'leagues', label: 'Ligalar', icon: <IconTrophy size={21} /> },
+  { key: 'favorites', label: 'Sevimlilar', icon: <IconStar size={21} /> },
+  { key: 'search', label: 'Qidiruv', icon: <IconSearch size={21} /> },
 ]
 
 export default function App() {
@@ -65,7 +66,7 @@ export default function App() {
       <div className="app">
         <header className="appbar">
           {top && !inTelegram() ? (
-            <button className="icon-btn back" onClick={back} aria-label="Orqaga">‹</button>
+            <button className="icon-btn back" onClick={back} aria-label="Orqaga"><IconChevronLeft size={26} /></button>
           ) : (
             <span className="appbar-spacer" />
           )}

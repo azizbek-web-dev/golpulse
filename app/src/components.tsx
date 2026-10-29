@@ -1,17 +1,34 @@
 import type { Match, StandingRow, StatLine } from './data/types'
 import { teamById, extraTeams, leagueById } from './data/mock'
+import { IconChevronDown, IconChevronUp, IconGrid, IconPin, IconStar } from './icons'
+
+/** public/ dagi asset yo'li (Vite base bilan) */
+export const asset = (path: string): string => `${import.meta.env.BASE_URL}${path}`
 
 // Jamoa vizual ma'lumoti (asosiy ro'yxat + standings dagi qo'shimcha jamoalar)
-export function teamInfo(id: string): { name: string; short: string; color: string } {
+export function teamInfo(id: string): { name: string; short: string; color: string; crest?: string } {
   const t = (() => { try { return teamById(id) } catch { return undefined } })()
-  if (t) return { name: t.name, short: t.short, color: t.color }
+  if (t) return { name: t.name, short: t.short, color: t.color, crest: t.crest }
   const e = extraTeams[id]
   if (e) return e
   return { name: id, short: id.slice(0, 3).toUpperCase(), color: '#555' }
 }
 
+/** Jamoa gerbi — real rasm bo'lsa rasm, bo'lmasa harfli doiracha (fallback) */
 export function Crest({ teamId, size = 22 }: { teamId: string; size?: number }) {
   const info = teamInfo(teamId)
+  if (info.crest) {
+    return (
+      <img
+        className="crest-img"
+        src={asset(info.crest)}
+        width={size}
+        height={size}
+        alt={info.name}
+        loading="lazy"
+      />
+    )
+  }
   return (
     <span
       className="crest"
@@ -19,6 +36,22 @@ export function Crest({ teamId, size = 22 }: { teamId: string; size?: number }) 
       aria-label={info.name}
     >
       {info.short}
+    </span>
+  )
+}
+
+/** Liga logotipi — real rasm (oq chip ichida), bo'lmasa bayroq emoji */
+export function LeagueLogo({ leagueId, size = 24 }: { leagueId: string; size?: number }) {
+  const l = leagueById(leagueId)
+  if (!l.logo) {
+    return <span className="league-flag" style={{ fontSize: size * 0.85 }}>{l.flag}</span>
+  }
+  return (
+    <span
+      className={`league-logo${leagueId === 'superliga' ? ' on-dark' : ''}`}
+      style={{ width: size, height: size }}
+    >
+      <img src={asset(l.logo)} alt={l.name} loading="lazy" />
     </span>
   )
 }
@@ -51,7 +84,7 @@ export function StarBtn({ active, onToggle }: { active: boolean; onToggle: () =>
       onClick={(e) => { e.stopPropagation(); onToggle() }}
       aria-label="Sevimlilarga qo'shish"
     >
-      {active ? '★' : '☆'}
+      <IconStar size={21} filled={active} />
     </button>
   )
 }
@@ -106,13 +139,13 @@ export function LeagueHeader({
   return (
     <div className="league-header">
       <button className="league-header-main" onClick={onOpenLeague}>
-        <span className="league-flag">{l.flag}</span>
+        <LeagueLogo leagueId={leagueId} size={24} />
         <span className="league-name">{l.name}</span>
         <span className="league-country">{l.country.toUpperCase()}</span>
       </button>
-      <button className={`icon-btn${pinned ? ' active' : ''}`} onClick={onPin} aria-label="Pin">📌</button>
-      <button className="icon-btn" onClick={onOpenTable} aria-label="Jadval">▦</button>
-      <button className="icon-btn" onClick={onToggle} aria-label="Yig'ish">{collapsed ? '▾' : '▴'}</button>
+      <button className={`icon-btn${pinned ? ' active' : ''}`} onClick={onPin} aria-label="Pin"><IconPin size={16} /></button>
+      <button className="icon-btn" onClick={onOpenTable} aria-label="Jadval"><IconGrid size={16} /></button>
+      <button className="icon-btn" onClick={onToggle} aria-label="Yig'ish">{collapsed ? <IconChevronDown size={16} /> : <IconChevronUp size={16} />}</button>
     </div>
   )
 }

@@ -1,4 +1,6 @@
 import { leagues, matchesByLeague } from '../data/mock'
+import { LeagueLogo } from '../components'
+import { IconChevronRight } from '../icons'
 import { useNav } from '../nav'
 
 export default function LeaguesPage() {
@@ -9,12 +11,12 @@ export default function LeaguesPage() {
       <div className="section-label">Mashhur ligalar</div>
       {leagues.map((l) => (
         <button key={l.id} className="league-row" onClick={() => nav.openLeague(l.id)}>
-          <span className="league-flag big">{l.flag}</span>
+          <LeagueLogo leagueId={l.id} size={34} />
           <span className="league-row-main">
             <b>{l.name}</b>
             <small>{l.country} · {matchesByLeague(l.id).length} o'yin bugun</small>
           </span>
-          <span className="row-chevron">›</span>
+          <IconChevronRight size={19} className="row-chevron" />
         </button>
       ))}
     </div>

@@ -9,6 +9,8 @@ export interface League {
   name: string
   country: string
   flag: string
+  /** real liga logotipi (public/leagues/), bo'lmasa flag emoji ishlatiladi */
+  logo?: string
   season: string
   /** mavsum progressi, 0..1 */
   progress: number
@@ -18,8 +20,10 @@ export interface League {
 export interface Team {
   id: string
   name: string
-  short: string // 3 harfli qisqartma — gerb o'rniga
-  color: string // initsial doirasi rangi
+  short: string // 3 harfli qisqartma — gerb topilmasa fallback
+  color: string // fallback doira rangi
+  /** real jamoa gerbi (public/crests/), bo'lmasa harfli doiracha chiqadi */
+  crest?: string
   leagueId: string
   stadium?: string
   stadiumCapacity?: string

@@ -1,5 +1,6 @@
 import { teamById, teamMatches, players, leagueById } from '../data/mock'
 import { Crest, MatchRow, StarBtn } from '../components'
+import { IconChevronRight } from '../icons'
 import { useNav } from '../nav'
 
 export default function TeamPage({ id }: { id: string }) {
@@ -48,7 +49,7 @@ export default function TeamPage({ id }: { id: string }) {
             <button key={p.id} className="player-row" onClick={() => nav.openPlayer(p.id)}>
               <span className="avatar">{p.initials}</span>
               <span className="player-row-main"><b>{p.name}</b><small>#{p.number} · {p.position}</small></span>
-              <span className="row-chevron">›</span>
+              <IconChevronRight size={19} className="row-chevron" />
             </button>
           ))}
         </>

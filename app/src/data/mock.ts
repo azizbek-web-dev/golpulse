@@ -4,36 +4,36 @@ import type {
 
 // ---- Ligalar ------------------------------------------------------------
 export const leagues: League[] = [
-  { id: 'epl', name: 'Premier League', country: 'Angliya', flag: '🇬🇧', season: '2026/2027', progress: 0.25, followers: '1.2M' },
-  { id: 'laliga', name: 'La Liga', country: 'Ispaniya', flag: '🇪🇸', season: '2026/2027', progress: 0.24 },
-  { id: 'seriea', name: 'Serie A', country: 'Italiya', flag: '🇮🇹', season: '2026/2027', progress: 0.23 },
-  { id: 'bundesliga', name: 'Bundesliga', country: 'Germaniya', flag: '🇩🇪', season: '2026/2027', progress: 0.22 },
-  { id: 'superliga', name: 'Superliga', country: "O'zbekiston", flag: '🇺🇿', season: '2026', progress: 0.78 },
+  { id: 'epl', logo: 'leagues/epl.png', name: 'Premier League', country: 'Angliya', flag: '🇬🇧', season: '2026/2027', progress: 0.25, followers: '1.2M' },
+  { id: 'laliga', logo: 'leagues/laliga.png', name: 'La Liga', country: 'Ispaniya', flag: '🇪🇸', season: '2026/2027', progress: 0.24 },
+  { id: 'seriea', logo: 'leagues/seriea.png', name: 'Serie A', country: 'Italiya', flag: '🇮🇹', season: '2026/2027', progress: 0.23 },
+  { id: 'bundesliga', logo: 'leagues/bundesliga.png', name: 'Bundesliga', country: 'Germaniya', flag: '🇩🇪', season: '2026/2027', progress: 0.22 },
+  { id: 'superliga', logo: 'leagues/superliga.png', name: 'Superliga', country: "O'zbekiston", flag: '🇺🇿', season: '2026', progress: 0.78 },
 ]
 
 export const leagueById = (id: string): League => leagues.find((l) => l.id === id)!
 
 // ---- Jamoalar ------------------------------------------------------------
 export const teams: Team[] = [
-  { id: 'bou', name: 'Bournemouth', short: 'BOU', color: '#B50E12', leagueId: 'epl', stadium: 'Vitality Stadium', stadiumCapacity: '11 307', coach: 'Marco Rose', position: 10 },
-  { id: 'avl', name: 'Aston Villa', short: 'AVL', color: '#670E36', leagueId: 'epl', stadium: 'Villa Park', coach: 'Unai Emery', position: 8 },
-  { id: 'mci', name: 'Man City', short: 'MCI', color: '#6CABDD', leagueId: 'epl' },
-  { id: 'ars', name: 'Arsenal', short: 'ARS', color: '#EF0107', leagueId: 'epl' },
-  { id: 'liv', name: 'Liverpool', short: 'LIV', color: '#C8102E', leagueId: 'epl' },
-  { id: 'che', name: 'Chelsea', short: 'CHE', color: '#034694', leagueId: 'epl' },
-  { id: 'mun', name: 'Man Utd', short: 'MUN', color: '#DA291C', leagueId: 'epl' },
-  { id: 'lee', name: 'Leeds United', short: 'LEE', color: '#8a7d1a', leagueId: 'epl' },
-  { id: 'rma', name: 'Real Madrid', short: 'RMA', color: '#7a6a1f', leagueId: 'laliga' },
-  { id: 'bar', name: 'Barcelona', short: 'BAR', color: '#A50044', leagueId: 'laliga' },
-  { id: 'atm', name: 'Atlético Madrid', short: 'ATM', color: '#CB3524', leagueId: 'laliga' },
-  { id: 'int', name: 'Inter', short: 'INT', color: '#0068A8', leagueId: 'seriea' },
-  { id: 'nap', name: 'Napoli', short: 'NAP', color: '#12A0D7', leagueId: 'seriea' },
-  { id: 'juv', name: 'Juventus', short: 'JUV', color: '#4d4d4d', leagueId: 'seriea' },
-  { id: 'bay', name: 'Bayern', short: 'BAY', color: '#DC052D', leagueId: 'bundesliga' },
-  { id: 'bvb', name: 'Dortmund', short: 'BVB', color: '#9c8a00', leagueId: 'bundesliga' },
-  { id: 'pak', name: 'Paxtakor', short: 'PAK', color: '#1d4ed8', leagueId: 'superliga' },
-  { id: 'nas', name: 'Nasaf', short: 'NAS', color: '#0369a1', leagueId: 'superliga' },
-  { id: 'bun', name: 'Bunyodkor', short: 'BUN', color: '#15803d', leagueId: 'superliga' },
+  { id: 'bou', name: 'Bournemouth', short: 'BOU', crest: 'crests/bou.png', color: '#B50E12', leagueId: 'epl', stadium: 'Vitality Stadium', stadiumCapacity: '11 307', coach: 'Marco Rose', position: 10 },
+  { id: 'avl', name: 'Aston Villa', short: 'AVL', crest: 'crests/avl.png', color: '#670E36', leagueId: 'epl', stadium: 'Villa Park', coach: 'Unai Emery', position: 8 },
+  { id: 'mci', name: 'Man City', short: 'MCI', crest: 'crests/mci.png', color: '#6CABDD', leagueId: 'epl' },
+  { id: 'ars', name: 'Arsenal', short: 'ARS', crest: 'crests/ars.png', color: '#EF0107', leagueId: 'epl' },
+  { id: 'liv', name: 'Liverpool', short: 'LIV', crest: 'crests/liv.png', color: '#C8102E', leagueId: 'epl' },
+  { id: 'che', name: 'Chelsea', short: 'CHE', crest: 'crests/che.png', color: '#034694', leagueId: 'epl' },
+  { id: 'mun', name: 'Man Utd', short: 'MUN', crest: 'crests/mun.png', color: '#DA291C', leagueId: 'epl' },
+  { id: 'lee', name: 'Leeds United', short: 'LEE', crest: 'crests/lee.png', color: '#8a7d1a', leagueId: 'epl' },
+  { id: 'rma', name: 'Real Madrid', short: 'RMA', crest: 'crests/rma.png', color: '#7a6a1f', leagueId: 'laliga' },
+  { id: 'bar', name: 'Barcelona', short: 'BAR', crest: 'crests/bar.png', color: '#A50044', leagueId: 'laliga' },
+  { id: 'atm', name: 'Atlético Madrid', short: 'ATM', crest: 'crests/atm.png', color: '#CB3524', leagueId: 'laliga' },
+  { id: 'int', name: 'Inter', short: 'INT', crest: 'crests/int.png', color: '#0068A8', leagueId: 'seriea' },
+  { id: 'nap', name: 'Napoli', short: 'NAP', crest: 'crests/nap.png', color: '#12A0D7', leagueId: 'seriea' },
+  { id: 'juv', name: 'Juventus', short: 'JUV', crest: 'crests/juv.png', color: '#4d4d4d', leagueId: 'seriea' },
+  { id: 'bay', name: 'Bayern', short: 'BAY', crest: 'crests/bay.png', color: '#DC052D', leagueId: 'bundesliga' },
+  { id: 'bvb', name: 'Dortmund', short: 'BVB', crest: 'crests/bvb.png', color: '#9c8a00', leagueId: 'bundesliga' },
+  { id: 'pak', name: 'Paxtakor', short: 'PAK', crest: 'crests/pak.png', color: '#1d4ed8', leagueId: 'superliga' },
+  { id: 'nas', name: 'Nasaf', short: 'NAS', crest: 'crests/nas.png', color: '#0369a1', leagueId: 'superliga' },
+  { id: 'bun', name: 'Bunyodkor', short: 'BUN', crest: 'crests/bun.png', color: '#15803d', leagueId: 'superliga' },
 ]
 
 export const teamById = (id: string): Team => teams.find((t) => t.id === id)!
@@ -195,8 +195,8 @@ export const standingsFull: StandingRow[] = [
 ]
 
 // Brighton jamoasi (standings uchun)
-export const extraTeams: Record<string, { name: string; short: string; color: string }> = {
-  bha: { name: 'Brighton', short: 'BHA', color: '#0057B8' },
+export const extraTeams: Record<string, { name: string; short: string; color: string; crest?: string }> = {
+  bha: { name: 'Brighton', short: 'BHA', color: '#0057B8', crest: 'crests/bha.png' },
 }
 
 // ---- O'yinchilar ----------------------------------------------------------
