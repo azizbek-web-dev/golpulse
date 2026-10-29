@@ -92,6 +92,7 @@ export function registerLeague(l: LeagueStub): void {
 }
 
 export function teamInfo(id: string): TeamVisual {
+  if (!id) return { name: '—', short: '—', color: '#555' }
   const r = teamRegistry.get(id)
   if (r) return r
   return { name: id, short: id.slice(0, 3).toUpperCase(), color: colorFor(id) }

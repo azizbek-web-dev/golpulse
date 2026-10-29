@@ -125,8 +125,8 @@ function Pitch({ bundle }: { bundle: MatchBundle }) {
     <div className="pitch">
       <div className="pitch-line mid" /><div className="pitch-circle" />
       <div className="pitch-line box-top" /><div className="pitch-line box-bottom" />
-      {renderTeam(lu.home.players, true, lu.home.teamId)}
-      {renderTeam(lu.away.players, false, lu.away.teamId)}
+      {renderTeam(lu.home.players, true, lu.home.teamId || bundle.match.home.id)}
+      {renderTeam(lu.away.players, false, lu.away.teamId || bundle.match.away.id)}
     </div>
   )
 }
