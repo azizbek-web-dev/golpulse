@@ -41,7 +41,7 @@ export default function LeaguePage({ id }: { id: string }) {
         <LeagueLogo leagueId={id} league={league} size={52} />
         <div>
           <h2>{league.name}</h2>
-          <div className="league-hero-sub">{league.country}{data.games.length ? ` · ${data.games.length} o'yin liniyada` : ''}</div>
+          <div className="league-hero-sub">{[league.country, data.games.length ? `${data.games.length} o'yin liniyada` : ''].filter(Boolean).join(' · ')}</div>
         </div>
       </div>
 

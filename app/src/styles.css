@@ -84,7 +84,7 @@ h3 { margin: 0; }
 .league-flag { font-size: 17px; }
 .league-flag.big { font-size: 24px; }
 .league-flag.hero { font-size: 40px; }
-.league-name { font-weight: 700; font-size: 14px; white-space: nowrap; }
+.league-name { font-weight: 700; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .league-country { font-size: 10px; color: var(--muted); letter-spacing: 0.5px; }
 .match-row { display: flex; width: 100%; text-align: left; padding: 9px 12px; border-bottom: 1px solid rgba(35, 43, 54, 0.6); min-height: 52px; align-items: center; gap: 8px; }
 .match-row:last-child { border-bottom: none; }
