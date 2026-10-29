@@ -263,3 +263,29 @@ h3 { margin: 0; }
 .bottom-nav-icon { line-height: 1.15; display: inline-flex; align-items: center; justify-content: center; }
 .bottom-nav-icon svg { display: block; }
 .nav-badge { position: absolute; top: 0; right: calc(50% - 19px); background: var(--live); color: #fff; font-size: 9.5px; font-weight: 800; border-radius: 999px; padding: 0 5px; }
+
+/* ---- Real fid holatlari: skeleton, xato, tablo ---- */
+.skeleton-wrap { margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
+.skeleton-row { background: var(--panel); border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 8px; }
+.skeleton-row span { display: block; height: 13px; border-radius: 6px; background: linear-gradient(90deg, #1b222c 25%, #232c39 50%, #1b222c 75%); background-size: 200% 100%; animation: shimmer 1.3s infinite; }
+.skeleton-row span.short { width: 55%; }
+@keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+.error-box { margin-top: 10px; background: var(--panel); border: 1px solid rgba(255, 69, 58, 0.35); border-radius: 12px; padding: 20px 16px; text-align: center; }
+.error-box p { color: var(--muted); font-size: 14px; line-height: 1.5; margin: 0 0 14px; }
+.tablo-chips { display: flex; gap: 7px; overflow-x: auto; padding: 2px 0 10px; scrollbar-width: none; }
+.tablo-chips::-webkit-scrollbar { display: none; }
+.tablo-chip { flex-shrink: 0; background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 6px 10px; display: flex; flex-direction: column; align-items: center; gap: 1px; }
+.tablo-chip small { color: var(--muted); font-size: 10.5px; white-space: nowrap; }
+.tablo-chip b { font-size: 13.5px; }
+.league-flag-img { border-radius: 4px; object-fit: cover; }
+.league-open-link { margin-left: auto; color: var(--accent); font-size: 12.5px; font-weight: 700; padding: 2px 4px; }
+.match-league-line { display: flex; align-items: center; gap: 6px; }
+.coach-note { color: var(--muted); font-weight: 500; font-size: 12.5px; }
+.lineup-photo { width: 30px; height: 30px; border-radius: 50%; object-fit: cover; background: var(--panel2); flex-shrink: 0; }
+.avatar-img { width: 42px; height: 42px; border-radius: 50%; object-fit: cover; background: var(--panel2); border: 1px solid var(--border); flex-shrink: 0; }
+.avatar-img.big { width: 64px; height: 64px; }
+.standings .c-form { padding-left: 1px; padding-right: 4px; }
+.standings .form-dots { gap: 2px; }
+.standings .form-dot { width: 13px; height: 13px; font-size: 8px; }
+.standings .team-cell-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 92px; display: inline-block; vertical-align: middle; }
+.date-nav { justify-content: center; }

@@ -1,16 +1,42 @@
-import { teamById, teamMatches, players, leagueById } from '../data/mock'
-import { Crest, MatchRow, StarBtn } from '../components'
+import { fetchTeam, registerTeam, useFetch } from '../api'
+import type { TeamGameRow } from '../data/types'
+import { Crest, ErrorBox, MatchRow, Skeleton, StarBtn } from '../components'
 import { IconChevronRight } from '../icons'
 import { useNav } from '../nav'
 
+const RESULT_BADGE = { W: 'G', D: 'D', L: 'M' } as const
+
+export function RecentRow({ g }: { g: TeamGameRow }) {
+  return (
+    <div className="h2h-row">
+      {g.result && <span className={`result-badge ${g.result}`}>{RESULT_BADGE[g.result]}</span>}
+      <span className="h2h-date">{g.date}</span>
+      <span className="h2h-teams">{g.home} — {g.away}</span>
+      <b>{g.score ?? '—'}</b>
+    </div>
+  )
+}
+
 export default function TeamPage({ id }: { id: string }) {
   const nav = useNav()
-  const team = teamById(id)
-  const games = teamMatches(id)
-  const next = games.find((m) => m.status === 'scheduled')
-  const past = games.filter((m) => m.status !== 'scheduled')
-  const squad = players.filter((p) => p.teamId === id)
-  const league = leagueById(team.leagueId)
+  const { data, error, loading, reload } = useFetch(() => fetchTeam(id), [id])
+  if (data) {
+    registerTeam(data.team)
+    if (data.nextMatch) { registerTeam(data.nextMatch.home); registerTeam(data.nextMatch.away) }
+  }
+
+  if (loading) return <div className="page detail"><Skeleton rows={6} /></div>
+  if (error || !data) {
+    return (
+      <div className="page detail">
+        <div className="empty-note">Jamoa ma'lumoti topilmadi — bu jamoa bugungi fidda bo'lmasligi mumkin</div>
+        <ErrorBox onRetry={reload} />
+      </div>
+    )
+  }
+
+  const team = data.team
+  const initials = team.name.split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase()
 
   return (
     <div className="page detail">
@@ -18,37 +44,37 @@ export default function TeamPage({ id }: { id: string }) {
         <Crest teamId={id} size={64} />
         <div className="team-hero-main">
           <h2>{team.name}</h2>
-          <div className="team-hero-sub">{league.flag} {league.name}{team.position ? ` · ${team.position}-o'rin` : ''}</div>
+          <div className="team-hero-sub">{data.league.name}</div>
         </div>
-        <StarBtn active={nav.isFav(id)} onToggle={() => nav.toggleFav(id)} />
+        <StarBtn active={nav.isFav(id)} onToggle={() => nav.toggleFav(team)} />
       </div>
 
       <div className="meta-card">
-        {team.stadium && <div className="meta-row"><span>Stadion</span><b>{team.stadium}</b></div>}
-        {team.stadiumCapacity && <div className="meta-row"><span>Sig'imi</span><b>{team.stadiumCapacity}</b></div>}
-        {team.coach && <div className="meta-row"><span>Murabbiy</span><b>{team.coach}</b></div>}
-        {!team.stadium && !team.coach && <div className="meta-row"><span>Liga</span><b>{league.name}</b></div>}
+        {data.coach && <div className="meta-row"><span>Murabbiy</span><b>{data.coach}</b></div>}
+        <div className="meta-row"><span>Liga</span><b>{data.league.name}</b></div>
       </div>
 
-      {next && (
+      {data.nextMatch && (
         <>
           <h3 className="block-title">Keyingi o'yin</h3>
-          <MatchRow match={next} onOpen={nav.openMatch} />
+          <MatchRow match={data.nextMatch} onOpen={nav.openMatch} />
         </>
       )}
-      {past.length > 0 && (
+      {data.recent.length > 0 && (
         <>
           <h3 className="block-title">Oxirgi o'yinlar</h3>
-          {past.map((m) => <MatchRow key={m.id} match={m} onOpen={nav.openMatch} />)}
+          {data.recent.map((g, i) => <RecentRow key={i} g={g} />)}
         </>
       )}
-      {squad.length > 0 && (
+      {data.squad.length > 0 && (
         <>
           <h3 className="block-title">Tarkib</h3>
-          {squad.map((p) => (
-            <button key={p.id} className="player-row" onClick={() => nav.openPlayer(p.id)}>
-              <span className="avatar">{p.initials}</span>
-              <span className="player-row-main"><b>{p.name}</b><small>#{p.number} · {p.position}</small></span>
+          {data.squad.map((p) => (
+            <button key={p.id} className="player-row" onClick={() => nav.openPlayer(`${data.repGameId}:${p.id}`)}>
+              {p.photo
+                ? <img className="avatar-img" src={p.photo} alt="" loading="lazy" />
+                : <span className="avatar">{initials}</span>}
+              <span className="player-row-main"><b>{p.name}</b><small>{p.country}</small></span>
               <IconChevronRight size={19} className="row-chevron" />
             </button>
           ))}

@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { NavContext, type DetailRoute, type Nav, type TabKey } from './nav'
+import type { TeamStub } from './data/types'
+import { registerTeam } from './api'
 import { tg, inTelegram } from './telegram'
 import { IconActivity, IconBall, IconChevronLeft, IconSearch, IconStar, IconTrophy } from './icons'
 import HomePage from './pages/HomePage'
@@ -19,11 +21,29 @@ const TABS: Array<{ key: TabKey; label: string; icon: ReactNode }> = [
   { key: 'search', label: 'Qidiruv', icon: <IconSearch size={21} /> },
 ]
 
+const FAV_KEY = 'golpulse-favs-v1'
+
+function loadFavs(): Map<string, TeamStub> {
+  try {
+    const raw = localStorage.getItem(FAV_KEY)
+    if (!raw) return new Map()
+    const arr = JSON.parse(raw) as TeamStub[]
+    return new Map(arr.map((t) => [t.id, t]))
+  } catch { return new Map() }
+}
+
 export default function App() {
   const [tab, setTab] = useState<TabKey>('live')
   const [stack, setStack] = useState<DetailRoute[]>([])
-  const [favorites, setFavorites] = useState<Set<string>>(new Set())
+  const [favMap, setFavMap] = useState<Map<string, TeamStub>>(loadFavs)
   const scrollRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    try { localStorage.setItem(FAV_KEY, JSON.stringify([...favMap.values()])) } catch { /* noop */ }
+    favMap.forEach((t) => registerTeam(t))
+  }, [favMap])
+
+  const favorites = useMemo(() => new Set(favMap.keys()), [favMap])
 
   const push = useCallback((r: DetailRoute) => setStack((s) => [...s, r]), [])
   const back = useCallback(() => setStack((s) => s.slice(0, -1)), [])
@@ -37,13 +57,14 @@ export default function App() {
     back,
     goTab,
     favorites,
-    toggleFav: (teamId) => setFavorites((prev) => {
-      const next = new Set(prev)
-      if (next.has(teamId)) next.delete(teamId); else next.add(teamId)
+    favTeam: (id) => favMap.get(id),
+    toggleFav: (team) => setFavMap((prev) => {
+      const next = new Map(prev)
+      if (next.has(team.id)) next.delete(team.id); else next.set(team.id, team)
       return next
     }),
-    isFav: (teamId) => favorites.has(teamId),
-  }), [push, back, goTab, favorites])
+    isFav: (teamId) => favMap.has(teamId),
+  }), [push, back, goTab, favorites, favMap])
 
   // Telegram native BackButton: faqat detail sahifalarda (REJA 3-bo'lim)
   const backRef = useRef(back)

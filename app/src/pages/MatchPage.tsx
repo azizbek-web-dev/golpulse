@@ -1,185 +1,201 @@
 import { useState, type ReactNode } from 'react'
-import { matchById, teamById, leagueById, standingsFull, h2hSummary, h2hPast } from '../data/mock'
-import type { Match, MatchEvent } from '../data/types'
-import { asset, Crest, LeagueLogo, MomentumChart, RatingPill, StandingsTable, StarBtn, StatBar, teamInfo } from '../components'
+import { fetchMatch, registerTeam, teamInfo, useFetch } from '../api'
+import type { LineupPlayer, MatchBundle, MatchEvent } from '../data/types'
+import { Crest, ErrorBox, LeagueLogo, RatingPill, Skeleton, StandingsTable, StarBtn, StatBar } from '../components'
 import { IconBall, IconCard, IconMapPin, IconSub, IconTarget } from '../icons'
 import { useNav } from '../nav'
 
 const EVENT_ICON: Record<MatchEvent['type'], ReactNode> = {
   goal: <IconBall size={16} />,
   'pen-goal': <IconBall size={16} />,
+  'pen-missed': <IconTarget size={16} />,
   yellow: <IconCard size={15} color="#FFC531" />,
   red: <IconCard size={15} color="#FF453A" />,
   sub: <IconSub size={16} />,
   chance: <IconTarget size={16} />,
+  info: <IconBall size={16} />,
 }
 
-// Sxema koordinatalari: [x%, y%] — y o'z darvozasidan (0) raqib darvozasigacha (100)
-const FORMATIONS: Record<string, Array<[number, number]>> = {
-  '4-1-4-1': [[50, 5], [12, 19], [38, 16], [62, 16], [88, 19], [50, 31], [12, 48], [38, 44], [62, 44], [88, 48], [50, 63]],
-  '4-2-3-1': [[50, 5], [12, 19], [38, 16], [62, 16], [88, 19], [35, 31], [65, 31], [15, 48], [50, 47], [85, 48], [50, 68]],
+const TYPE_LABEL: Record<MatchEvent['type'], string> = {
+  goal: 'Gol', 'pen-goal': 'Penaltidan gol', 'pen-missed': "Penalti o'tkazib yuborildi",
+  yellow: 'Sariq karta', red: 'Qizil karta', sub: 'Almashtirish', chance: 'Vaziyat', info: 'Voqea',
 }
 
 function EventRow({ ev, homeId }: { ev: MatchEvent; homeId: string }) {
   const isHome = ev.teamId === homeId
   return (
     <div className={`event-row${isHome ? '' : ' away'}`}>
-      <span className="event-min">{ev.minute}'</span>
+      <span className="event-min">{ev.minuteLabel}</span>
       <span className="event-icon">{EVENT_ICON[ev.type]}</span>
       <span className="event-text">
-        <b>{ev.player}</b>
+        <b>{ev.player || TYPE_LABEL[ev.type]}</b>
         {ev.note && <small>{ev.note}</small>}
       </span>
     </div>
   )
 }
 
-function EventsTab({ match }: { match: Match }) {
-  const evs = match.events ?? []
-  if (evs.length === 0) {
-    return <div className="empty-note">Voqealar hali yo'q — o'yin boshlangach shu yerda chiqadi</div>
-  }
-  const first = evs.filter((e) => e.minute <= 45)
-  const second = evs.filter((e) => e.minute > 45)
-  const ht = match.htHome !== undefined ? `${match.htHome}:${match.htAway}` : ''
-  const ft = match.homeScore !== undefined ? `${match.homeScore}:${match.awayScore}` : ''
+function EventsTab({ bundle }: { bundle: MatchBundle }) {
+  const match = bundle.match
+  const evs = bundle.events ?? []
+  // Bo'limlar: kech bo'lim tepada (FlashScore uslubi)
+  const periods: string[] = []
+  for (const e of evs) if (!periods.includes(e.period)) periods.push(e.period)
+  const ordered = [...periods].reverse()
+  const ht = match.htHome !== null && match.htHome !== undefined ? `${match.htHome}:${match.htAway}` : null
   return (
     <div>
-      {match.momentum && <MomentumChart data={match.momentum} />}
-      {second.length > 0 && (
-        <>
-          <div className="half-head">2-bo'lim — {ft}</div>
-          {second.map((e, i) => <EventRow key={i} ev={e} homeId={match.homeId} />)}
-        </>
-      )}
-      <div className="half-head">1-bo'lim — {ht}</div>
-      {first.map((e, i) => <EventRow key={i} ev={e} homeId={match.homeId} />)}
-      <div className="match-meta">
-        {match.venue && <span><IconMapPin size={13} /> {match.venue}</span>}
-        {match.referee && <span>Hakam: {match.referee}</span>}
-      </div>
-    </div>
-  )
-}
-
-function StatsTab({ match }: { match: Match }) {
-  const [period, setPeriod] = useState<'all' | 'h1' | 'h2'>('all')
-  if (!match.stats) return <div className="empty-note">Statistika bu o'yin uchun hali shakllanmadi</div>
-  return (
-    <div>
-      <div className="chips small">
-        {([['all', 'Butun o\'yin'], ['h1', '1-bo\'lim'], ['h2', '2-bo\'lim']] as const).map(([k, l]) => (
-          <button key={k} className={`chip${period === k ? ' active' : ''}`} onClick={() => setPeriod(k)}>{l}</button>
-        ))}
-      </div>
-      {period === 'all' ? (
-        <div className="stats-list">
-          {match.stats.map((s) => <StatBar key={s.label} line={s} />)}
+      {match.tablo && match.tablo.length > 0 && (
+        <div className="tablo-chips">
+          {match.tablo.slice(0, 6).map((t) => (
+            <span key={t.label} className="tablo-chip"><small>{t.label}</small><b>{Math.round(t.home)} : {Math.round(t.away)}</b></span>
+          ))}
         </div>
-      ) : (
-        <div className="empty-note">Namuna UI: davrlar bo'yicha statistika real fid ulanganda to'ldiriladi</div>
       )}
+      {evs.length === 0 && <div className="empty-note">Bu o'yin uchun voqealar oqimi fidda yo'q</div>}
+      {ordered.map((p) => (
+        <div key={p}>
+          <div className="half-head">{p}{p.startsWith('1') && ht ? ` — ${ht}` : ''}</div>
+          {evs.filter((e) => e.period === p).slice().reverse().map((e, i) => (
+            <EventRow key={`${e.minuteLabel}-${i}`} ev={e} homeId={match.home.id} />
+          ))}
+        </div>
+      ))}
+      <div className="match-meta">
+        {bundle.meta.venue && <span><IconMapPin size={13} /> {bundle.meta.venue}{bundle.meta.capacity ? ` (${bundle.meta.capacity})` : ''}</span>}
+        {bundle.meta.referee && <span>Hakam: {bundle.meta.referee}</span>}
+        {bundle.meta.stage && <span>{bundle.meta.stage}</span>}
+        {bundle.meta.temperature && <span>{bundle.meta.temperature}</span>}
+      </div>
     </div>
   )
 }
 
-function Pitch({ match }: { match: Match }) {
-  const renderTeam = (lineup: NonNullable<Match['homeLineup']>, formation: string, isHome: boolean, teamId: string) => {
-    const coords = FORMATIONS[formation] ?? FORMATIONS['4-2-3-1']
-    const crest = teamInfo(teamId).crest
-    return lineup.map((p, i) => {
-      const [x, y] = coords[i] ?? [50, 50]
-      // Chetlardan ichkari tortamiz — darvozabon/o'yinchi bloki maydon tashqarisiga chiqmasin
-      const top = isHome ? 5 + (y / 2) * 0.9 : 95 - (y / 2) * 0.9
+function StatsTab({ bundle }: { bundle: MatchBundle }) {
+  const stats = bundle.stats
+  const available = (['all', 'h1', 'h2'] as const).filter((k) => stats && stats[k] && stats[k]!.length > 0)
+  const [period, setPeriod] = useState<'all' | 'h1' | 'h2'>('all')
+  if (!stats || available.length === 0) {
+    return <div className="empty-note">Statistika bu o'yin uchun fidda hali yo'q</div>
+  }
+  const current = available.includes(period) ? period : available[0]
+  const labels = { all: "Butun o'yin", h1: "1-bo'lim", h2: "2-bo'lim" } as const
+  return (
+    <div>
+      {available.length > 1 && (
+        <div className="chips small">
+          {available.map((k) => (
+            <button key={k} className={`chip${current === k ? ' active' : ''}`} onClick={() => setPeriod(k)}>{labels[k]}</button>
+          ))}
+        </div>
+      )}
+      <div className="stats-list">
+        {stats[current]!.map((s) => <StatBar key={s.label} line={s} />)}
+      </div>
+    </div>
+  )
+}
+
+function Pitch({ bundle }: { bundle: MatchBundle }) {
+  const lu = bundle.lineups!
+  if (!lu.home.hasPositions || !lu.away.hasPositions) return null
+  const renderTeam = (players: LineupPlayer[], isHome: boolean, teamId: string) => {
+    const crest = teamInfo(teamId).crestUrl
+    return players.map((p) => {
+      if (p.x === undefined || p.y === undefined) return null
+      const x = isHome ? p.x : 100 - p.x
+      const top = isHome ? 5 + (p.y / 2) * 0.9 : 95 - (p.y / 2) * 0.9
       return (
-        <div key={i} className="pitch-player" style={{ left: `${x}%`, top: `${top}%` }}>
+        <div key={p.id} className="pitch-player" style={{ left: `${x}%`, top: `${top}%` }}>
           {crest ? (
             <span className="pitch-dotwrap">
-              <img className="pitch-crest" src={asset(crest)} alt="" />
+              <img className="pitch-crest" src={crest} alt="" />
               <span className="pitch-num">{p.number}</span>
             </span>
           ) : (
             <span className={`pitch-dot${isHome ? ' home' : ' away'}`}>{p.number}</span>
           )}
-          <span className="pitch-name">{p.name.split(' ').slice(-1)[0]}</span>
+          <span className="pitch-name">{(p.shortName || p.name.split(' ').slice(-1)[0])}</span>
           {p.rating !== undefined && <RatingPill value={p.rating} />}
         </div>
       )
     })
   }
-  if (!match.homeLineup || !match.awayLineup) return null
   return (
     <div className="pitch">
       <div className="pitch-line mid" /><div className="pitch-circle" />
       <div className="pitch-line box-top" /><div className="pitch-line box-bottom" />
-      {renderTeam(match.homeLineup, match.homeFormation ?? '4-2-3-1', true, match.homeId)}
-      {renderTeam(match.awayLineup, match.awayFormation ?? '4-2-3-1', false, match.awayId)}
+      {renderTeam(lu.home.players, true, lu.home.teamId)}
+      {renderTeam(lu.away.players, false, lu.away.teamId)}
     </div>
   )
 }
 
-function LineupsTab({ match }: { match: Match }) {
+function LineupsTab({ bundle }: { bundle: MatchBundle }) {
   const nav = useNav()
-  if (!match.homeLineup || !match.awayLineup) {
-    return <div className="empty-note">Tarkiblar o'yin boshlanishidan ~1 soat oldin e'lon qilinadi</div>
-  }
-  const home = teamById(match.homeId)
-  const away = teamById(match.awayId)
-  const list = (players: NonNullable<Match['homeLineup']>, teamId: string) => (
+  const lu = bundle.lineups
+  const match = bundle.match
+  if (!lu) return <div className="empty-note">Tarkiblar fidda hali e'lon qilinmadi</div>
+  const list = (players: LineupPlayer[], teamName: string) => (
     <div className="lineup-list">
       {players.map((p) => (
         <button
-          key={p.number}
+          key={p.id}
           className="lineup-row"
-          onClick={() => { if (p.name === 'Lewis Cook') nav.openPlayer('p-cook') }}
+          onClick={() => nav.openPlayer(`${match.id}:${p.id}`)}
         >
-          <span className="lineup-num">{p.number}</span>
+          {p.photo
+            ? <img className="lineup-photo" src={p.photo} alt="" loading="lazy" />
+            : <span className="lineup-num">{p.number}</span>}
           <span className="lineup-name">
-            <span className="lineup-name-line">
-              {p.name}
-              {p.goals ? <em><IconBall size={13} />×{p.goals}</em> : null}
-              {p.yellow ? <em><IconCard size={12} color="#FFC531" /></em> : null}
-            </span>
-            <small>{teamInfo(teamId).short} · {p.pos}</small>
+            <span className="lineup-name-line">{p.name}</span>
+            <small>{teamName}{p.pos ? ` · ${p.pos}` : ''}{p.number ? ` · #${p.number}` : ''}</small>
           </span>
           {p.rating !== undefined && <RatingPill value={p.rating} />}
         </button>
       ))}
     </div>
   )
+  const side = (s: typeof lu.home, name: string) => (
+    <>
+      <h3 className="block-title">{name}{s.coach ? <small className="coach-note"> · Murabbiy: {s.coach}</small> : null}</h3>
+      {list(s.players, name)}
+      {s.subs.length > 0 && (
+        <div className="subs-line">Zaxira: {s.subs.map((x) => (x.number ? `${x.name} (${x.number})` : x.name)).join(', ')}</div>
+      )}
+    </>
+  )
   return (
     <div>
-      <div className="formation-head">
-        <span><Crest teamId={match.homeId} size={20} /> {match.homeFormation}</span>
-        {match.homeRating && <RatingPill value={match.homeRating} big />}
-        <span className="formation-vs">—</span>
-        {match.awayRating && <RatingPill value={match.awayRating} big />}
-        <span>{match.awayFormation} <Crest teamId={match.awayId} size={20} /></span>
-      </div>
-      <Pitch match={match} />
-      <h3 className="block-title">{home.name}</h3>
-      {list(match.homeLineup, match.homeId)}
-      <div className="subs-line">Zaxira: {(match.homeSubs ?? []).join(', ')}</div>
-      <h3 className="block-title">{away.name}</h3>
-      {list(match.awayLineup, match.awayId)}
-      <div className="subs-line">Zaxira: {(match.awaySubs ?? []).join(', ')}</div>
+      {(lu.home.formation || lu.away.formation) && (
+        <div className="formation-head">
+          <span><Crest teamId={match.home.id} size={20} /> {lu.home.formation ?? '—'}</span>
+          <span className="formation-vs">—</span>
+          <span>{lu.away.formation ?? '—'} <Crest teamId={match.away.id} size={20} /></span>
+        </div>
+      )}
+      <Pitch bundle={bundle} />
+      {side(lu.home, match.home.name)}
+      {side(lu.away, match.away.name)}
     </div>
   )
 }
 
-function H2HTab({ match }: { match: Match }) {
-  const home = teamInfo(match.homeId)
-  const away = teamInfo(match.awayId)
+function H2HTab({ bundle }: { bundle: MatchBundle }) {
+  const h = bundle.h2h
+  const match = bundle.match
+  if (!h) return <div className="empty-note">H2H ma'lumoti fidda yo'q</div>
   return (
     <div>
       <div className="h2h-summary">
-        <div className="h2h-cell"><b>{h2hSummary.homeWins}</b><span>{home.name} g'alabasi</span></div>
-        <div className="h2h-cell"><b>{h2hSummary.draws}</b><span>Durang</span></div>
-        <div className="h2h-cell"><b>{h2hSummary.awayWins}</b><span>{away.name} g'alabasi</span></div>
+        <div className="h2h-cell"><b>{h.homeWins}</b><span>{match.home.name} g'alabasi</span></div>
+        <div className="h2h-cell"><b>{h.draws}</b><span>Durang</span></div>
+        <div className="h2h-cell"><b>{h.awayWins}</b><span>{match.away.name} g'alabasi</span></div>
       </div>
-      <div className="h2h-note">Murabbiylar: {teamById(match.homeId).coach ?? '—'} — {teamById(match.awayId).coach ?? '—'} · Jami uchrashuvlar: {h2hSummary.total}</div>
+      <div className="h2h-note">Jami uchrashuvlar: {h.total}</div>
       <h3 className="block-title">O'tgan uchrashuvlar</h3>
-      {h2hPast.map((g, i) => (
+      {h.past.length === 0 && <div className="empty-note">O'tgan uchrashuvlar topilmadi</div>}
+      {h.past.map((g, i) => (
         <div className="h2h-row" key={i}>
           <span className="h2h-date">{g.date}</span>
           <span className="h2h-teams">{g.home} — {g.away}</span>
@@ -192,35 +208,53 @@ function H2HTab({ match }: { match: Match }) {
 
 export default function MatchPage({ id }: { id: string }) {
   const nav = useNav()
-  const match = matchById(id)
-  const league = leagueById(match.leagueId)
   const [mainTab, setMainTab] = useState<'game' | 'h2h' | 'table'>('game')
   const [subTab, setSubTab] = useState<'events' | 'stats' | 'lineups'>('events')
+  const [poll, setPoll] = useState<number | undefined>(undefined)
+  const { data: bundle, error, loading, reload } = useFetch(() => fetchMatch(id), [id], poll)
 
+  // Jonli o'yin bo'lsa 30 soniyada yangilab turamiz, tugasa to'xtatamiz
+  const status = bundle?.match.status
+  if ((status === 'live' || status === 'halftime') && poll === undefined) setPoll(30000)
+  if ((status === 'finished' || status === 'scheduled') && poll !== undefined) setPoll(undefined)
+
+  if (bundle) {
+    registerTeam(bundle.match.home)
+    registerTeam(bundle.match.away)
+    if (bundle.table) for (const g of bundle.table.groups) for (const r of g.rows) registerTeam(r.team)
+  }
+
+  if (loading) return <div className="page detail"><Skeleton rows={7} /></div>
+  if (error || !bundle) return <div className="page detail"><ErrorBox onRetry={reload} /></div>
+
+  const match = bundle.match
   const statusText =
-    match.status === 'live' ? `${match.minute}' — Jonli` :
+    match.status === 'live' ? `${match.minute ?? 0}' — Jonli` :
     match.status === 'halftime' ? 'Tanaffus' :
     match.status === 'finished' ? 'Tugagan' : `Boshlanish: ${match.startTime}`
 
-  const side = (teamId: string, score?: number) => (
-    <button className="score-side" onClick={() => nav.openTeam(teamId)}>
-      <Crest teamId={teamId} size={54} />
-      <span className="score-team">{teamInfo(teamId).name}</span>
-      {match.status !== 'scheduled' && <span className="score-num">{score}</span>}
+  const side = (team: typeof match.home, score?: number | null) => (
+    <button className="score-side" onClick={() => nav.openTeam(team.id)}>
+      <Crest teamId={team.id} size={54} />
+      <span className="score-team">{team.name}</span>
+      {match.status !== 'scheduled' && <span className="score-num">{score ?? ''}</span>}
     </button>
   )
 
   return (
     <div className="page detail">
-      <div className="match-league-line"><LeagueLogo leagueId={league.id} size={16} /> {league.name} · {match.dateLabel}</div>
+      <div className="match-league-line">
+        <LeagueLogo leagueId={match.leagueId} size={16} /> {match.leagueName} · {match.dateLabel}
+        <button className="league-open-link" onClick={() => nav.openLeague(match.leagueId)}>Liga →</button>
+      </div>
       <div className="scoreboard">
-        {side(match.homeId, match.homeScore)}
+        {side(match.home, match.homeScore)}
         <div className="score-center">
           <span className={`score-status${match.status === 'live' || match.status === 'halftime' ? ' live' : ''}`}>{statusText}</span>
-          {match.htHome !== undefined && <span className="score-ht">1-bo'lim: {match.htHome}:{match.htAway}</span>}
-          <StarBtn active={nav.isFav(match.homeId) || nav.isFav(match.awayId)} onToggle={() => nav.toggleFav(match.homeId)} />
+          {match.htHome !== null && match.htHome !== undefined && <span className="score-ht">1-bo'lim: {match.htHome}:{match.htAway}</span>}
+          <StarBtn active={nav.isFav(match.home.id)} onToggle={() => nav.toggleFav(match.home)} />
         </div>
-        {side(match.awayId, match.awayScore)}
+        {side(match.away, match.awayScore)}
       </div>
 
       <div className="tabs main">
@@ -236,14 +270,21 @@ export default function MatchPage({ id }: { id: string }) {
               <button key={k} className={`tab${subTab === k ? ' active' : ''}`} onClick={() => setSubTab(k)}>{l}</button>
             ))}
           </div>
-          {subTab === 'events' && <EventsTab match={match} />}
-          {subTab === 'stats' && <StatsTab match={match} />}
-          {subTab === 'lineups' && <LineupsTab match={match} />}
+          {subTab === 'events' && <EventsTab bundle={bundle} />}
+          {subTab === 'stats' && <StatsTab bundle={bundle} />}
+          {subTab === 'lineups' && <LineupsTab bundle={bundle} />}
         </>
       )}
-      {mainTab === 'h2h' && <H2HTab match={match} />}
+      {mainTab === 'h2h' && <H2HTab bundle={bundle} />}
       {mainTab === 'table' && (
-        <StandingsTable rows={standingsFull} highlight={[match.homeId, match.awayId]} onTeam={nav.openTeam} />
+        bundle.table
+          ? bundle.table.groups.map((g) => (
+            <div key={g.name || 'main'}>
+              {g.name && <h3 className="block-title">{g.name}</h3>}
+              <StandingsTable rows={g.rows} highlight={[match.home.id, match.away.id]} onTeam={nav.openTeam} />
+            </div>
+          ))
+          : <div className="empty-note">Bu turnir uchun jadval fidda yo'q (kubok formati bo'lishi mumkin)</div>
       )}
     </div>
   )

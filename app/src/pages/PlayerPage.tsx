@@ -1,50 +1,61 @@
-import { playerById, teamById, cookMatches } from '../data/mock'
-import { Crest, RatingPill } from '../components'
+import { fetchPlayer, registerTeam, useFetch } from '../api'
+import { Crest, ErrorBox, RatingPill, Skeleton } from '../components'
 import { useNav } from '../nav'
+import { RecentRow } from './TeamPage'
 
-const RESULT_LABEL = { W: 'G\'alaba', D: 'Durang', L: 'Mag\'lubiyat' } as const
+const POS_LABEL: Record<string, string> = { GK: 'Darvozabon', DF: 'Himoyachi', MF: 'Yarim himoyachi', FW: 'Hujumchi' }
 
+/** O'yinchi sahifasi — fidda bor maydonlar: foto, pozitsiya, raqam, davlat, jamoa oxirgi o'yinlari.
+ *  Bozor qiymati/shartnoma/reyting fidda yo'q — ko'rsatilmaydi. */
 export default function PlayerPage({ id }: { id: string }) {
   const nav = useNav()
-  const player = playerById(id)
-  const team = teamById(player.teamId)
-  const isCook = id === 'p-cook'
+  const sep = id.indexOf(':')
+  const gameId = sep > 0 ? id.slice(0, sep) : ''
+  const playerHash = sep > 0 ? id.slice(sep + 1) : ''
+  const { data, error, loading, reload } = useFetch(
+    () => fetchPlayer(gameId, playerHash),
+    [gameId, playerHash],
+  )
+  if (data) registerTeam(data.team)
+
+  if (loading) return <div className="page detail"><Skeleton rows={5} /></div>
+  if (error || !data) {
+    return (
+      <div className="page detail">
+        <div className="empty-note">O'yinchi ma'lumoti topilmadi</div>
+        <ErrorBox onRetry={reload} />
+      </div>
+    )
+  }
+
+  const p = data.player
+  const initials = p.name.split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase()
 
   return (
     <div className="page detail">
       <div className="player-hero">
-        <span className="avatar big">{player.initials}</span>
+        {p.photo
+          ? <img className="avatar-img big" src={p.photo} alt={p.name} />
+          : <span className="avatar big">{initials}</span>}
         <div>
-          <h2>{player.name}</h2>
-          <button className="player-team-link" onClick={() => nav.openTeam(team.id)}>
-            <Crest teamId={team.id} size={18} /> {team.name}
+          <h2>{p.name}</h2>
+          <button className="player-team-link" onClick={() => nav.openTeam(data.team.id)}>
+            <Crest teamId={data.team.id} size={18} /> {data.team.name}
           </button>
         </div>
-        {isCook && <span className="player-last-rating"><RatingPill value={8.0} big /></span>}
+        {p.rating !== undefined && <span className="player-last-rating"><RatingPill value={p.rating} big /></span>}
       </div>
 
       <div className="meta-card">
-        <div className="meta-row"><span>Pozitsiya</span><b>{player.position} (#{player.number})</b></div>
-        <div className="meta-row"><span>Yosh</span><b>{player.age} ({player.birthDate})</b></div>
-        <div className="meta-row"><span>Bozor qiymati</span><b>{player.marketValue}</b></div>
-        {player.contractUntil && <div className="meta-row"><span>Shartnoma</span><b>{player.contractUntil} gacha</b></div>}
+        {p.pos && <div className="meta-row"><span>Pozitsiya</span><b>{POS_LABEL[p.pos] ?? p.pos}{p.number ? ` · #${p.number}` : ''}</b></div>}
+        {p.country && <div className="meta-row"><span>Davlat</span><b>{p.country}</b></div>}
+        <div className="meta-row"><span>Jamoa</span><b>{data.team.name}</b></div>
       </div>
 
-      <h3 className="block-title">Oxirgi o'yinlar</h3>
-      {isCook ? (
-        cookMatches.map((g, i) => (
-          <div className="player-match-row" key={i}>
-            <span className={`result-badge ${g.result}`}>{g.result}</span>
-            <span className="player-match-main">
-              <b>{g.opponent} — {g.score}</b>
-              <small>{g.date} · {g.minutes}' · {RESULT_LABEL[g.result]}{g.note ? ` · ${g.note}` : ''}</small>
-            </span>
-            <RatingPill value={g.rating} />
-          </div>
-        ))
-      ) : (
-        <div className="empty-note">Namuna UI: o'yinlar tarixi Lewis Cook sahifasida to'liq ko'rsatilgan</div>
-      )}
+      <h3 className="block-title">Jamoaning oxirgi o'yinlari</h3>
+      {data.teamRecent.length === 0
+        ? <div className="empty-note">Oxirgi o'yinlar topilmadi</div>
+        : data.teamRecent.map((g, i) => <RecentRow key={i} g={g} />)}
     </div>
   )
 }

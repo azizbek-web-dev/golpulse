@@ -1,38 +1,33 @@
-import type { Match, StandingRow, StatLine } from './data/types'
-import { teamById, extraTeams, leagueById } from './data/mock'
+import type { ApiMatch, LeagueStub, StandingRow, StatLine } from './data/types'
+import { leagueInfo, localCrestFor, localLeagueLogo, teamInfo } from './api'
 import { IconChevronDown, IconChevronUp, IconGrid, IconPin, IconStar } from './icons'
 
-/** public/ dagi asset yo'li (Vite base bilan) */
-export const asset = (path: string): string => `${import.meta.env.BASE_URL}${path}`
+/** public/ dagi asset yo'li (Vite base bilan); to'liq URL bo'lsa o'zi qoladi */
+export const asset = (path: string): string =>
+  path.startsWith('http') ? path : `${import.meta.env.BASE_URL}${path}`
 
-// Jamoa vizual ma'lumoti (asosiy ro'yxat + standings dagi qo'shimcha jamoalar)
-export function teamInfo(id: string): { name: string; short: string; color: string; crest?: string } {
-  const t = (() => { try { return teamById(id) } catch { return undefined } })()
-  if (t) return { name: t.name, short: t.short, color: t.color, crest: t.crest }
-  const e = extraTeams[id]
-  if (e) return e
-  return { name: id, short: id.slice(0, 3).toUpperCase(), color: '#555' }
-}
-
-/** Jamoa gerbi — real rasm bo'lsa rasm, bo'lmasa harfli doiracha (fallback) */
+/** Jamoa gerbi: 1) o'zimizning sifatli gerb (nom bo'yicha) 2) fid gerbi 3) harfli doiracha */
 export function Crest({ teamId, size = 22 }: { teamId: string; size?: number }) {
   const info = teamInfo(teamId)
-  if (info.crest) {
+  const local = localCrestFor(info.name)
+  const src = local?.crest ?? info.crestUrl ?? undefined
+  if (src) {
     return (
       <img
         className="crest-img"
-        src={asset(info.crest)}
+        src={asset(src)}
         width={size}
         height={size}
         alt={info.name}
         loading="lazy"
+        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
       />
     )
   }
   return (
     <span
       className="crest"
-      style={{ width: size, height: size, background: info.color, fontSize: size * 0.34 }}
+      style={{ width: size, height: size, background: local?.color ?? info.color, fontSize: size * 0.34 }}
       aria-label={info.name}
     >
       {info.short}
@@ -40,28 +35,36 @@ export function Crest({ teamId, size = 22 }: { teamId: string; size?: number }) 
   )
 }
 
-/** Liga logotipi — real rasm (oq chip ichida), bo'lmasa bayroq emoji */
-export function LeagueLogo({ leagueId, size = 24 }: { leagueId: string; size?: number }) {
-  const l = leagueById(leagueId)
-  if (!l.logo) {
-    return <span className="league-flag" style={{ fontSize: size * 0.85 }}>{l.flag}</span>
+/** Liga logotipi: o'ziniki → fid logotipi (oq chip) → mamlakat bayrog'i rasmi → nom qisqartmasi */
+export function LeagueLogo({ leagueId, league, size = 24 }: { leagueId: string; league?: LeagueStub; size?: number }) {
+  const l = league ?? leagueInfo(leagueId)
+  const local = l ? localLeagueLogo(l) : undefined
+  if (local) {
+    return (
+      <span className={`league-logo${local.includes('superliga') ? ' on-dark' : ''}`} style={{ width: size, height: size }}>
+        <img src={asset(local)} alt={l?.name ?? ''} loading="lazy" />
+      </span>
+    )
   }
-  return (
-    <span
-      className={`league-logo${leagueId === 'superliga' ? ' on-dark' : ''}`}
-      style={{ width: size, height: size }}
-    >
-      <img src={asset(l.logo)} alt={l.name} loading="lazy" />
-    </span>
-  )
+  if (l?.logoUrl) {
+    return (
+      <span className="league-logo" style={{ width: size, height: size }}>
+        <img src={l.logoUrl} alt={l.name} loading="lazy" />
+      </span>
+    )
+  }
+  if (l?.countryImageUrl) {
+    return <img className="league-flag-img" src={l.countryImageUrl} width={size} height={size} alt={l.country} loading="lazy" />
+  }
+  return <span className="league-flag" style={{ fontSize: size * 0.6 }}>{(l?.country ?? '').slice(0, 2).toUpperCase()}</span>
 }
 
-/** Reyting baloni — SofaScore shkalasi */
+/** Reyting baloni — faqat fid reyting bergan o'yinlarda chaqiriladi */
 export function ratingColor(v: number): string {
-  if (v >= 9) return '#2E7CD6' // ko'k
-  if (v >= 8) return '#00B562' // yashil
-  if (v >= 6.5) return '#9FBF1F' // sariq-yashil
-  return '#E4572E' // qizil-sarg'ish
+  if (v >= 9) return '#2E7CD6'
+  if (v >= 8) return '#00B562'
+  if (v >= 6.5) return '#9FBF1F'
+  return '#E4572E'
 }
 
 const fmtRating = (v: number): string => {
@@ -89,9 +92,9 @@ export function StarBtn({ active, onToggle }: { active: boolean; onToggle: () =>
   )
 }
 
-export function statusLabel(m: Match): { text: string; live: boolean } {
+export function statusLabel(m: ApiMatch): { text: string; live: boolean } {
   switch (m.status) {
-    case 'live': return { text: `${m.minute}'`, live: true }
+    case 'live': return { text: `${m.minute ?? 0}'`, live: true }
     case 'halftime': return { text: 'Tanaffus', live: true }
     case 'finished': return { text: 'FT', live: false }
     default: return { text: m.startTime, live: false }
@@ -99,21 +102,21 @@ export function statusLabel(m: Match): { text: string; live: boolean } {
 }
 
 /** Ikki qatorli o'yin qatori (FlashScore modeli) */
-export function MatchRow({ match, onOpen }: { match: Match; onOpen: (id: string) => void }) {
+export function MatchRow({ match, onOpen }: { match: ApiMatch; onOpen: (id: string) => void }) {
   const st = statusLabel(match)
   const showScore = match.status !== 'scheduled'
-  const row = (teamId: string, score?: number) => (
+  const row = (team: ApiMatch['home'], score?: number | null) => (
     <div className="match-row-team">
-      <Crest teamId={teamId} />
-      <span className="match-row-name">{teamInfo(teamId).name}</span>
-      <span className={`match-row-score${st.live ? ' live' : ''}`}>{showScore ? score : ''}</span>
+      <Crest teamId={team.id} />
+      <span className="match-row-name">{team.name}</span>
+      <span className={`match-row-score${st.live ? ' live' : ''}`}>{showScore && score !== null && score !== undefined ? score : ''}</span>
     </div>
   )
   return (
     <button className="match-row" onClick={() => onOpen(match.id)}>
       <div className="match-row-main">
-        {row(match.homeId, match.homeScore)}
-        {row(match.awayId, match.awayScore)}
+        {row(match.home, match.homeScore)}
+        {row(match.away, match.awayScore)}
       </div>
       <div className={`match-row-status${st.live ? ' live' : ''}`}>
         {match.status === 'live' && <span className="live-dot" />}
@@ -125,9 +128,9 @@ export function MatchRow({ match, onOpen }: { match: Match; onOpen: (id: string)
 
 /** Liga guruhi sarlavhasi */
 export function LeagueHeader({
-  leagueId, pinned, collapsed, onPin, onToggle, onOpenLeague, onOpenTable,
+  league, pinned, collapsed, onPin, onToggle, onOpenLeague, onOpenTable,
 }: {
-  leagueId: string
+  league: LeagueStub
   pinned: boolean
   collapsed: boolean
   onPin: () => void
@@ -135,13 +138,12 @@ export function LeagueHeader({
   onOpenLeague: () => void
   onOpenTable: () => void
 }) {
-  const l = leagueById(leagueId)
   return (
     <div className="league-header">
       <button className="league-header-main" onClick={onOpenLeague}>
-        <LeagueLogo leagueId={leagueId} size={24} />
-        <span className="league-name">{l.name}</span>
-        <span className="league-country">{l.country.toUpperCase()}</span>
+        <LeagueLogo leagueId={league.id} league={league} size={24} />
+        <span className="league-name">{league.name}</span>
+        {league.country && <span className="league-country">{league.country.toUpperCase()}</span>}
       </button>
       <button className={`icon-btn${pinned ? ' active' : ''}`} onClick={onPin} aria-label="Pin"><IconPin size={16} /></button>
       <button className="icon-btn" onClick={onOpenTable} aria-label="Jadval"><IconGrid size={16} /></button>
@@ -152,7 +154,7 @@ export function LeagueHeader({
 
 /** Ikki tomonlama statistika bari */
 export function StatBar({ line }: { line: StatLine }) {
-  const fmt = (v: number) => (line.decimals ? v.toFixed(line.decimals) : `${v}`) + (line.suffix ?? '')
+  const fmt = (v: number) => (line.decimals ? v.toFixed(line.decimals) : `${Math.round(v)}`) + (line.suffix ?? '')
   const max = Math.max(line.home, line.away, 1)
   const homeWin = line.home > line.away
   const awayWin = line.away > line.home
@@ -171,40 +173,12 @@ export function StatBar({ line }: { line: StatLine }) {
   )
 }
 
-/** Momentum grafigi — SVG ustunlar (tepa: uy bosimi, past: mehmon) */
-export function MomentumChart({ data }: { data: number[] }) {
-  const w = 340, h = 92, mid = h / 2, bw = w / data.length
-  return (
-    <div className="momentum">
-      <div className="momentum-title">O'yin bosimi (Momentum)</div>
-      <svg viewBox={`0 0 ${w} ${h}`} className="momentum-svg" preserveAspectRatio="none">
-        <line x1="0" y1={mid} x2={w} y2={mid} stroke="#2A3342" strokeWidth="1" />
-        {data.map((v, i) => {
-          const bh = (Math.abs(v) / 100) * (mid - 4)
-          return (
-            <rect
-              key={i}
-              x={i * bw + 0.5}
-              y={v >= 0 ? mid - bh : mid}
-              width={bw - 1}
-              height={bh}
-              rx="1"
-              fill={v >= 0 ? 'var(--accent)' : '#5B6B82'}
-              opacity={v >= 0 ? 0.95 : 0.75}
-            />
-          )
-        })}
-      </svg>
-      <div className="momentum-axis"><span>1'</span><span>45'</span><span>90'</span></div>
-    </div>
-  )
-}
-
 export function FormDots({ form }: { form: Array<'W' | 'D' | 'L'> }) {
+  const label = { W: 'W', D: 'D', L: 'L' } as const
   return (
     <span className="form-dots">
       {form.map((f, i) => (
-        <span key={i} className={`form-dot ${f}`}>{f}</span>
+        <span key={i} className={`form-dot ${f}`}>{label[f]}</span>
       ))}
     </span>
   )
@@ -216,7 +190,7 @@ const zoneClass = (pos: number, total: number): string => {
   return ''
 }
 
-/** Ixcham jadval — 390px ga sig'adi, scroll yo'q */
+/** Ixcham jadval + forma ustuni — 390px ga sig'adi, scroll yo'q */
 export function StandingsTable({
   rows, highlight = [], onTeam,
 }: {
@@ -227,23 +201,45 @@ export function StandingsTable({
   return (
     <table className="standings">
       <thead>
-        <tr><th className="c-pos">#</th><th className="c-team">Jamoa</th><th>O'</th><th>G'</th><th>D</th><th>M</th><th>To'p</th><th className="c-pts">Och</th></tr>
+        <tr><th className="c-pos">#</th><th className="c-team">Jamoa</th><th>O'</th><th>G'</th><th>D</th><th>M</th><th className="c-pts">Och</th><th className="c-form">Forma</th></tr>
       </thead>
       <tbody>
         {rows.map((r) => (
-          <tr key={r.teamId} className={highlight.includes(r.teamId) ? 'hl' : ''}>
+          <tr key={r.team.id} className={highlight.includes(r.team.id) ? 'hl' : ''}>
             <td className="c-pos"><span className={`pos-box ${zoneClass(r.pos, rows.length)}`}>{r.pos}</span></td>
             <td className="c-team">
-              <button className="team-cell" onClick={() => onTeam?.(r.teamId)}>
-                <Crest teamId={r.teamId} size={20} />
-                <span>{teamInfo(r.teamId).name}</span>
+              <button className="team-cell" onClick={() => onTeam?.(r.team.id)}>
+                <Crest teamId={r.team.id} size={20} />
+                <span className="team-cell-name">{r.team.name}</span>
               </button>
             </td>
-            <td>{r.played}</td><td>{r.won}</td><td>{r.drawn}</td><td>{r.lost}</td><td>{r.goals}</td>
+            <td>{r.played}</td><td>{r.won}</td><td>{r.drawn}</td><td>{r.lost}</td>
             <td className="c-pts">{r.points}</td>
+            <td className="c-form">{r.form.length > 0 ? <FormDots form={r.form} /> : '—'}</td>
           </tr>
         ))}
       </tbody>
     </table>
+  )
+}
+
+/** Yuklanish skeleti */
+export function Skeleton({ rows = 4 }: { rows?: number }) {
+  return (
+    <div className="skeleton-wrap" aria-label="Yuklanmoqda">
+      {Array.from({ length: rows }).map((_, i) => (
+        <div key={i} className="skeleton-row"><span /><span className="short" /></div>
+      ))}
+    </div>
+  )
+}
+
+/** Xato holati — mock ga jim qaytish yo'q, qayta urinish tugmasi bor */
+export function ErrorBox({ onRetry }: { onRetry: () => void }) {
+  return (
+    <div className="error-box">
+      <p>Ma'lumotni yuklab bo'lmadi. Internet aloqasini tekshirib, qayta urining.</p>
+      <button className="primary-btn" onClick={onRetry}>Qayta urinish</button>
+    </div>
   )
 }
