@@ -1,0 +1,17 @@
+[Unit]
+Description=GolPulse Telegram Bot (Mini App launcher)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/hatch/workspace/golpulse/bot
+ExecStart=/usr/bin/python3 /home/hatch/workspace/golpulse/bot/golpulse_bot.py
+Environment=https_proxy=http://hatch-egress-proxy:3128
+Environment=http_proxy=http://hatch-egress-proxy:3128
+Environment=GOLPULSE_WEBAPP_URL=https://azizbek-web-dev.github.io/golpulse/
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
