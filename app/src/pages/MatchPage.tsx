@@ -248,9 +248,19 @@ export default function MatchPage({ id }: { id: string }) {
   return (
     <div className="page detail">
       <div className="match-league-line">
-        <LeagueLogo leagueId={match.leagueId} size={16} /> {match.leagueName} · {match.dateLabel}
-        {!match.leagueId.startsWith('res-') && (
-          <button className="league-open-link" onClick={() => nav.openLeague(match.leagueId)}>Liga →</button>
+        {match.leagueId && !match.leagueId.startsWith('res-') ? (
+          <button className="match-league-link" onClick={() => nav.openLeague(match.leagueId)}>
+            <LeagueLogo leagueId={match.leagueId} size={16} />
+            <span className="mll-name">{match.leagueName}</span>
+            <span className="mll-date">· {match.dateLabel}</span>
+            <span className="mll-arrow">›</span>
+          </button>
+        ) : (
+          <span className="match-league-static">
+            <LeagueLogo leagueId={match.leagueId} size={16} />
+            <span className="mll-name">{match.leagueName}</span>
+            <span className="mll-date">· {match.dateLabel}</span>
+          </span>
         )}
       </div>
       <div className="scoreboard">

@@ -328,7 +328,12 @@ html[data-tg-fs='1'] .fs-logo { display: flex; }
 .tablo-chip small { color: var(--muted); font-size: 10.5px; white-space: nowrap; }
 .tablo-chip b { font-size: 13.5px; }
 .league-flag-img { border-radius: 4px; object-fit: cover; }
-.league-open-link { margin-left: auto; color: var(--accent); font-size: 12.5px; font-weight: 700; padding: 2px 4px; }
+.match-league-link, .match-league-static { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; min-width: 0; }
+.match-league-link { padding: 2px 4px; }
+.match-league-link:active { opacity: 0.55; }
+.mll-name { font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.mll-date { flex-shrink: 0; color: var(--muted); }
+.mll-arrow { flex-shrink: 0; color: var(--muted); font-size: 15px; line-height: 1; }
 .match-league-line { display: flex; align-items: center; gap: 6px; }
 .coach-note { color: var(--muted); font-weight: 500; font-size: 12.5px; }
 .lineup-photo { width: 30px; height: 30px; border-radius: 50%; object-fit: cover; background: var(--panel2); flex-shrink: 0; }
