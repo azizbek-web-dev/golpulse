@@ -81,6 +81,37 @@ html[data-tg-fs='1'] .fs-logo { display: flex; }
 .chip-badge { background: var(--live); color: #fff; border-radius: 999px; font-size: 11px; padding: 0 6px; font-weight: 800; }
 .chip.active .chip-badge { background: #04150b; color: var(--accent); }
 
+/* ---- Filtr qatori: yopishqoq shisha (4-variant — foydalanuvchi tanlovi) ----
+   Scroll da qator kontent tepasida qoladi, sana qatori scroll bilan ketadi.
+   top: fullscreen da Telegram tugmalari zonasi (jami inset) ostidan boshlanadi;
+   oddiy rejimda inset 0 — ekran tepasiga yopishadi. Sahifa chetlarigacha
+   cho'zilishi uchun yon padding manfiy margin bilan qoplanadi. */
+.chips-bar {
+  position: sticky;
+  top: var(--tg-inset-top, 0px);
+  z-index: 30;
+  margin: 0 -12px;
+  padding: 0 12px;
+  background: rgba(14, 17, 22, 0.72);
+  -webkit-backdrop-filter: blur(16px) saturate(1.5);
+  backdrop-filter: blur(16px) saturate(1.5);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+.chips-bar .chips { padding: 8px 0 9px; }
+.chips-bar .chip {
+  background: rgba(27, 34, 44, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  color: #a7b1c1;
+}
+.chips-bar .chip.active {
+  background: rgba(0, 210, 106, 0.12);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+/* «Jonli» soni — faol chipda ham qizil belgi (maketdagidek) */
+.chips-bar .chip-badge,
+.chips-bar .chip.active .chip-badge { background: var(--live); color: #fff; }
+
 /* ---- Liga guruhi va o'yin qatorlari ---- */
 .league-group { background: var(--panel); border-radius: 14px; overflow: hidden; margin-bottom: 12px; }
 .league-header { display: flex; align-items: center; padding: 8px 6px 8px 12px; border-bottom: 1px solid var(--border); background: var(--panel2); }

@@ -191,17 +191,19 @@ export default function HomePage({ defaultFilter }: { defaultFilter: Filter }) {
         </button>
       </div>
 
-      <div className="chips">
-        {chips.map((c) => (
-          <button
-            key={c.key}
-            className={`chip${effFilter === c.key ? ' active' : ''}`}
-            onClick={() => setFilter(c.key)}
-          >
-            {c.label}
-            {c.key === 'live' && dayData && dayData.counts.live > 0 && <span className="chip-badge">{dayData.counts.live}</span>}
-          </button>
-        ))}
+      <div className="chips-bar">
+        <div className="chips">
+          {chips.map((c) => (
+            <button
+              key={c.key}
+              className={`chip${effFilter === c.key ? ' active' : ''}`}
+              onClick={() => setFilter(c.key)}
+            >
+              {c.label}
+              {c.key === 'live' && dayData && dayData.counts.live > 0 && <span className="chip-badge">{dayData.counts.live}</span>}
+            </button>
+          ))}
+        </div>
       </div>
 
       {loading && !dayData && <HomeSkeleton />}
