@@ -135,6 +135,29 @@ export function useLiveMinute(m: ApiMatch | null): number | null {
   return Math.max(local, m.minute ?? 0)
 }
 
+/**
+ * Jonli soat (soniyalar bilan, mm:ss uchun): useLiveMinute bilan bir xil
+ * mexanizm — fid timeSec asos, lokal 1s taymer, har poll da resinxron.
+ * timeRun=false bo'lsa soat qotadi (fid qiymati o'zgarmaydi).
+ */
+export function useLiveSeconds(m: ApiMatch | null): number | null {
+  useSecondTick()
+  const baseRef = useRef<{ id: string; sec: number; at: number }>({ id: '', sec: 0, at: 0 })
+  const serverSec = m?.timeSec
+  const matchId = m?.id
+  useEffect(() => {
+    if (matchId && serverSec != null) {
+      baseRef.current = { id: matchId, sec: serverSec, at: Date.now() }
+    }
+  }, [matchId, serverSec])
+  if (!m || m.status !== 'live') return null
+  if (serverSec == null) return m.minute != null ? m.minute * 60 : null
+  if (m.timeRun === false) return serverSec
+  const b = baseRef.current
+  if (b.id !== m.id) return serverSec
+  return Math.max(b.sec + Math.floor((Date.now() - b.at) / 1000), serverSec - 5)
+}
+
 /** Hisob o'zgarganda qator chaqnashi (flash) uchun holat */
 function useScoreFlash(m: ApiMatch): boolean {
   const [flash, setFlash] = useState(false)

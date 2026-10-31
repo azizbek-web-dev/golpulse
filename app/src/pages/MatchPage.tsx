@@ -1,10 +1,17 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { fetchMatch, registerTeam, teamInfo, useFetch } from '../api'
-import type { LineupPlayer, MatchBundle, MatchEvent } from '../data/types'
-import { Crest, ErrorBox, LeagueLogo, MatchSkeleton, RatingPill, StandingsTable, StarBtn, StatBar, useLiveMinute } from '../components'
+import type { LineupPlayer, MatchBundle, MatchEvent, StandingRow } from '../data/types'
+import { Crest, ErrorBox, LeagueLogo, MatchSkeleton, RatingPill, StandingsTable, StarBtn, StatBar, useLiveSeconds } from '../components'
 import { BellButton, useSubs } from '../bell'
-import { IconBall, IconCard, IconMapPin, IconSub, IconTarget } from '../icons'
+import { IconBall, IconCalendar, IconCard, IconCloud, IconFlag, IconMapPin, IconSub, IconTarget, IconThermometer, IconUser, IconUsers } from '../icons'
 import { useNav } from '../nav'
+
+/** Jonli soat formati: mm:ss (daqiqa 2 xonali) */
+function fmtClock(sec: number): string {
+  const m = Math.floor(sec / 60)
+  const s = sec % 60
+  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+}
 
 const EVENT_ICON: Record<MatchEvent['type'], ReactNode> = {
   goal: <IconBall size={16} />,
@@ -36,14 +43,141 @@ function EventRow({ ev, homeId }: { ev: MatchEvent; homeId: string }) {
   )
 }
 
-function EventsTab({ bundle }: { bundle: MatchBundle }) {
+/** Davr hisobi — shu davrdagi gollar (voqealar oqimidan) */
+function periodScore(evs: MatchEvent[], period: string, homeId: string): [number, number] {
+  let h = 0, a = 0
+  for (const e of evs) {
+    if (e.period !== period) continue
+    if (e.type === 'goal' || e.type === 'pen-goal') { if (e.teamId === homeId) h++; else a++ }
+  }
+  return [h, a]
+}
+
+/** Ma'lumot kartasi — ikonkali tartibli qatorlar (SofaScore info kartasi uslubi) */
+function InfoCard({ bundle }: { bundle: MatchBundle }) {
+  const { match, meta } = bundle
+  const venue = meta.venue ? meta.venue.replace(/^\s*Stadion:\s*/i, '').trim() : null
+  const capNum = meta.capacity ? Number(String(meta.capacity).replace(/[^\d]/g, '')) : null
+  const rows: Array<{ icon: ReactNode; label: string; value: string }> = [
+    { icon: <IconCalendar size={16} />, label: 'Sana va vaqt', value: `${match.dateLabel} · ${match.startTime}` },
+  ]
+  if (venue) rows.push({ icon: <IconMapPin size={16} />, label: 'Stadion', value: venue })
+  if (capNum) rows.push({ icon: <IconUsers size={16} />, label: "Sig'imi", value: capNum.toLocaleString('ru-RU') })
+  if (meta.referee) rows.push({ icon: <IconUser size={16} />, label: 'Hakam', value: meta.referee })
+  if (meta.stage) rows.push({ icon: <IconFlag size={16} />, label: 'Bosqich', value: meta.stage })
+  if (meta.temperature) rows.push({ icon: <IconThermometer size={16} />, label: 'Harorat', value: meta.temperature })
+  if (meta.weather) rows.push({ icon: <IconCloud size={16} />, label: 'Ob-havo', value: meta.weather })
+  return (
+    <>
+      <h3 className="block-title">Ma'lumot</h3>
+      <div className="info-card">
+        {rows.map((r) => (
+          <div className="info-row" key={r.label}>
+            <span className="info-icon">{r.icon}</span>
+            <span className="info-label">{r.label}</span>
+            <span className="info-value">{r.value}</span>
+          </div>
+        ))}
+      </div>
+    </>
+  )
+}
+
+/** Jamoa formasi — ikki jamoaning oxirgi 5 o'yini, ikki ustunda */
+function FormBlock({ bundle }: { bundle: MatchBundle }) {
+  const h = bundle.h2h
+  const match = bundle.match
+  if (!h) return null
+  const cols = [
+    { team: match.home, rows: h.homeRecent ?? [] },
+    { team: match.away, rows: h.awayRecent ?? [] },
+  ].map((c) => ({ ...c, rows: c.rows.filter((g) => g.score && g.result).slice(0, 5) }))
+  if (cols.every((c) => c.rows.length === 0)) return null
+  return (
+    <>
+      <h3 className="block-title">Jamoa formasi</h3>
+      <div className="form-cols">
+        {cols.map((c) => (
+          <div className="form-col" key={c.team.id}>
+            <div className="form-col-head"><Crest teamId={c.team.id} size={20} /><span>{c.team.name}</span></div>
+            {c.rows.map((g, i) => {
+              const isHome = g.homeId === c.team.id
+              const oppId = isHome ? g.awayId : g.homeId
+              const oppName = isHome ? g.away : g.home
+              const [s1, s2] = (g.score ?? '').split(':').map((x) => parseInt(x, 10))
+              const mine = isHome ? s1 : s2
+              const opp = isHome ? s2 : s1
+              return (
+                <div className="form-row" key={`${g.dateTs}-${i}`}>
+                  <Crest teamId={oppId} size={18} />
+                  <span className="form-opp">{oppName}</span>
+                  <span className={`form-chip ${g.result!.toLowerCase()}`}>{mine}:{opp}</span>
+                </div>
+              )
+            })}
+          </div>
+        ))}
+      </div>
+    </>
+  )
+}
+
+/** Mini-jadval — faqat ikki jamoaning qatorlari + to'liq jadvalga havola */
+function MiniTable({ bundle, onShowTable }: { bundle: MatchBundle; onShowTable: () => void }) {
+  const nav = useNav()
+  const t = bundle.table
+  const match = bundle.match
+  if (!t) return null
+  const ids = [match.home.id, match.away.id]
+  let rows: StandingRow[] = []
+  for (const g of t.groups) {
+    const f = g.rows.filter((r) => ids.includes(r.team.id))
+    if (f.length) { rows = f; break }
+  }
+  if (rows.length === 0) return null
+  rows = [...rows].sort((a, b) => a.pos - b.pos)
+  const diff = (goals: string) => {
+    const [gf, ga] = goals.split(':').map((x) => parseInt(x, 10))
+    if (Number.isNaN(gf) || Number.isNaN(ga)) return goals
+    const d = gf - ga
+    return d > 0 ? `+${d}` : `${d}`
+  }
+  return (
+    <>
+      <h3 className="block-title">Jadval</h3>
+      <table className="standings mini">
+        <thead>
+          <tr><th className="c-pos">#</th><th className="c-team">Jamoa</th><th>O'</th><th>Farq</th><th className="c-pts">Och</th></tr>
+        </thead>
+        <tbody>
+          {rows.map((r) => (
+            <tr key={r.team.id} className="hl">
+              <td className="c-pos"><span className="pos-box">{r.pos}</span></td>
+              <td className="c-team">
+                <button className="team-cell" onClick={() => nav.openTeam(r.team.id)}>
+                  <Crest teamId={r.team.id} size={20} />
+                  <span className="team-cell-name">{r.team.name}</span>
+                </button>
+              </td>
+              <td>{r.played}</td>
+              <td>{diff(r.goals)}</td>
+              <td className="c-pts">{r.points}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <button className="mini-table-link" onClick={onShowTable}>To'liq jadval</button>
+    </>
+  )
+}
+
+function EventsTab({ bundle, onShowTable }: { bundle: MatchBundle; onShowTable: () => void }) {
   const match = bundle.match
   const evs = bundle.events ?? []
   // Bo'limlar: kech bo'lim tepada (FlashScore uslubi)
   const periods: string[] = []
   for (const e of evs) if (!periods.includes(e.period)) periods.push(e.period)
   const ordered = [...periods].reverse()
-  const ht = match.htHome !== null && match.htHome !== undefined ? `${match.htHome}:${match.htAway}` : null
   return (
     <div>
       {match.tablo && match.tablo.length > 0 && (
@@ -54,20 +188,20 @@ function EventsTab({ bundle }: { bundle: MatchBundle }) {
         </div>
       )}
       {evs.length === 0 && <div className="empty-note">Bu o'yin uchun voqealar oqimi fidda yo'q</div>}
-      {ordered.map((p) => (
-        <div key={p}>
-          <div className="half-head">{p}{p.startsWith('1') && ht ? ` — ${ht}` : ''}</div>
-          {evs.filter((e) => e.period === p).slice().reverse().map((e, i) => (
-            <EventRow key={`${e.minuteLabel}-${i}`} ev={e} homeId={match.home.id} />
-          ))}
-        </div>
-      ))}
-      <div className="match-meta">
-        {bundle.meta.venue && <span><IconMapPin size={13} /> {bundle.meta.venue}{bundle.meta.capacity ? ` (${bundle.meta.capacity})` : ''}</span>}
-        {bundle.meta.referee && <span>Hakam: {bundle.meta.referee}</span>}
-        {bundle.meta.stage && <span>{bundle.meta.stage}</span>}
-        {bundle.meta.temperature && <span>{bundle.meta.temperature}</span>}
-      </div>
+      {ordered.map((p) => {
+        const [ph, pa] = periodScore(evs, p, match.home.id)
+        return (
+          <div key={p}>
+            <div className="half-head"><span>{p} · {ph}–{pa}</span></div>
+            {evs.filter((e) => e.period === p).slice().reverse().map((e, i) => (
+              <EventRow key={`${e.minuteLabel}-${i}`} ev={e} homeId={match.home.id} />
+            ))}
+          </div>
+        )
+      })}
+      <InfoCard bundle={bundle} />
+      <FormBlock bundle={bundle} />
+      <MiniTable bundle={bundle} onShowTable={onShowTable} />
     </div>
   )
 }
@@ -220,12 +354,19 @@ export default function MatchPage({ id }: { id: string }) {
     if (!status) return
     setPollMs(status === 'live' || status === 'halftime' ? 5000 : 60000)
   }, [status])
-  const liveMinute = useLiveMinute(bundle?.match ?? null)
+  const liveSec = useLiveSeconds(bundle?.match ?? null)
 
   if (bundle) {
     registerTeam(bundle.match.home)
     registerTeam(bundle.match.away)
     if (bundle.table) for (const g of bundle.table.groups) for (const r of g.rows) registerTeam(r.team)
+    if (bundle.h2h) {
+      // Forma/H2H qatorlaridagi raqiblar — gerblari bilan registrga (Crest shundan o'qiydi)
+      for (const g of [...bundle.h2h.past, ...bundle.h2h.homeRecent, ...bundle.h2h.awayRecent]) {
+        registerTeam({ id: g.homeId, name: g.home, short: '', crestUrl: g.homeCrestUrl ?? null })
+        registerTeam({ id: g.awayId, name: g.away, short: '', crestUrl: g.awayCrestUrl ?? null })
+      }
+    }
   }
 
   if (loading) return <div className="page detail"><MatchSkeleton main={mainTab} sub={subTab} /></div>
@@ -233,9 +374,28 @@ export default function MatchPage({ id }: { id: string }) {
 
   const match = bundle.match
   const statusText =
-    match.status === 'live' ? `${liveMinute ?? match.minute ?? 0}' — Jonli` :
+    match.status === 'live' ? (liveSec !== null ? fmtClock(liveSec) : `${match.minute ?? 0}' — Jonli`) :
     match.status === 'halftime' ? 'Tanaffus' :
     match.status === 'finished' ? 'Tugagan' : `Boshlanish: ${match.startTime}`
+
+  // Gol mualliflari — taxta ostida, har jamoa o'z tomonida (SofaScore uslubi)
+  const goalEvents = (bundle.events ?? []).filter((e) => e.type === 'goal' || e.type === 'pen-goal')
+  const homeGoals = goalEvents.filter((e) => e.teamId === match.home.id)
+  const awayGoals = goalEvents.filter((e) => e.teamId === match.away.id)
+  const scorerCol = (list: MatchEvent[], away: boolean) => (
+    <div className={`scorers-col${away ? ' away' : ''}`}>
+      {list.map((e, i) => (
+        <div className="scorer" key={`${e.minuteLabel}-${i}`}>
+          <span className="scorer-main">
+            <IconBall size={13} />
+            <span className="scorer-name">{e.player}</span>
+            <span className="scorer-min">{e.minuteLabel}{e.type === 'pen-goal' ? ' (pen)' : ''}</span>
+          </span>
+          {e.note && <small className="scorer-note">{e.note}</small>}
+        </div>
+      ))}
+    </div>
+  )
 
   const side = (team: typeof match.home, score?: number | null) => (
     <button className="score-side" onClick={() => nav.openTeam(team.id)}>
@@ -278,6 +438,12 @@ export default function MatchPage({ id }: { id: string }) {
         </div>
         {side(match.away, match.awayScore)}
       </div>
+      {(homeGoals.length > 0 || awayGoals.length > 0) && (
+        <div className="score-scorers">
+          {scorerCol(homeGoals, false)}
+          {scorerCol(awayGoals, true)}
+        </div>
+      )}
       {subs.isSub(match.id) && subs.deliverable(match.id) === false && (
         <div className="sub-note">Xabar kelishi uchun @golpulse_bot da /start bosing</div>
       )}
@@ -295,7 +461,7 @@ export default function MatchPage({ id }: { id: string }) {
               <button key={k} className={`tab${subTab === k ? ' active' : ''}`} onClick={() => setSubTab(k)}>{l}</button>
             ))}
           </div>
-          {subTab === 'events' && <EventsTab bundle={bundle} />}
+          {subTab === 'events' && <EventsTab bundle={bundle} onShowTable={() => setMainTab('table')} />}
           {subTab === 'stats' && <StatsTab bundle={bundle} />}
           {subTab === 'lineups' && <LineupsTab bundle={bundle} />}
         </>

@@ -145,3 +145,43 @@ export const IconMapPin = (p: IconProps) => (
     <circle cx="12" cy="10" r="3" />
   </Svg>
 )
+
+/** Sig'im — tomoshabinlar */
+export const IconUsers = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+    <circle cx="9" cy="7" r="4" />
+    <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+    <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+  </Svg>
+)
+
+/** Hakam — foydalanuvchi belgisi */
+export const IconUser = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
+    <circle cx="12" cy="7" r="4" />
+  </Svg>
+)
+
+/** Bosqich/tur — bayroq */
+export const IconFlag = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" />
+    <line x1="4" x2="4" y1="22" y2="15" />
+  </Svg>
+)
+
+/** Harorat — termometr */
+export const IconThermometer = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M14 4v10.54a4 4 0 1 1-4 0V4a2 2 0 0 1 4 0Z" />
+  </Svg>
+)
+
+/** Ob-havo — bulut */
+export const IconCloud = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z" />
+  </Svg>
+)

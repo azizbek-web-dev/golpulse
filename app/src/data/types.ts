@@ -114,6 +114,8 @@ export interface TeamGameRow {
   away: string
   homeId: string
   awayId: string
+  homeCrestUrl?: string | null
+  awayCrestUrl?: string | null
   score: string | null
   result?: 'W' | 'D' | 'L'
 }

@@ -489,6 +489,8 @@ function team_game_row(array $g, array $teams, string $perspClId): array {
         'dateTs' => (int)($g['dateStart'] ?? 0),
         'home' => $t1['title'], 'away' => $t2['title'],
         'homeId' => $t1['clId'], 'awayId' => $t2['clId'],
+        'homeCrestUrl' => !empty($t1['image']) ? feed_url('/sfiles/logo_teams/' . $t1['image']) : null,
+        'awayCrestUrl' => !empty($t2['image']) ? feed_url('/sfiles/logo_teams/' . $t2['image']) : null,
         'score' => ($s1 === null || $s2 === null) ? null : ((int)$s1 . ':' . (int)$s2),
     ];
     if ($perspClId !== '' && $row['score'] !== null) {

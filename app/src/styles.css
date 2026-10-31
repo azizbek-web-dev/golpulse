@@ -221,18 +221,57 @@ html[data-tg-fs='1'] .fs-logo { display: flex; }
 .score-team { font-size: 14.5px; font-weight: 700; text-align: center; line-height: 1.25; }
 .score-num { font-size: 30px; font-weight: 800; }
 .score-center { display: flex; flex-direction: column; align-items: center; gap: 5px; padding-top: 16px; }
-.score-status { font-size: 13px; font-weight: 700; color: var(--muted); text-align: center; }
+.score-status { font-size: 13px; font-weight: 700; color: var(--muted); text-align: center; font-variant-numeric: tabular-nums; }
 .score-status.live { color: var(--live); }
 .score-ht { font-size: 11.5px; color: var(--muted); }
-.half-head { background: var(--panel2); border-radius: 8px; padding: 7px 12px; font-size: 12.5px; font-weight: 700; color: var(--muted); margin: 14px 0 4px; }
+.half-head { display: flex; align-items: center; gap: 12px; font-size: 12.5px; font-weight: 700; color: var(--muted); margin: 16px 0 6px; }
+.half-head::before, .half-head::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+.half-head span { white-space: nowrap; }
+
+/* Gol mualliflari — taxta ostida (SofaScore uslubi) */
+.score-scorers { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 20px; padding: 8px 16px 2px; }
+.scorers-col { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.scorers-col.away { align-items: flex-end; text-align: right; }
+.scorers-col.away .scorer-main { flex-direction: row-reverse; }
+.scorer { display: flex; flex-direction: column; min-width: 0; }
+.scorers-col.away .scorer { align-items: flex-end; }
+.scorer-main { display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; min-width: 0; }
+.scorer-main svg { color: var(--muted); flex-shrink: 0; }
+.scorer-name { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.scorer-min { color: var(--muted); font-variant-numeric: tabular-nums; flex-shrink: 0; }
+.scorer-note { color: var(--muted); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* Ma'lumot kartasi — ikonkali qatorlar */
+.info-card { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 4px 12px; }
+.info-row { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid rgba(35, 43, 54, 0.55); font-size: 13px; }
+.info-row:last-child { border-bottom: none; }
+.info-icon { color: var(--muted); display: inline-flex; flex-shrink: 0; }
+.info-label { color: var(--muted); flex-shrink: 0; }
+.info-value { margin-left: auto; text-align: right; font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Jamoa formasi — ikki ustun */
+.form-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.form-col { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 10px; min-width: 0; }
+.form-col-head { display: flex; align-items: center; gap: 7px; font-weight: 700; font-size: 13px; margin-bottom: 8px; min-width: 0; }
+.form-col-head span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.form-row { display: flex; align-items: center; gap: 7px; padding: 5px 0; min-width: 0; }
+.form-opp { flex: 1; font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.form-chip { flex-shrink: 0; min-width: 40px; text-align: center; padding: 3px 7px; border-radius: 7px; font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.form-chip.w { background: var(--accent); color: #04150b; }
+.form-chip.d { background: #39424f; color: #cfd6df; }
+.form-chip.l { background: var(--live); color: #fff; }
+
+/* Mini-jadval */
+.standings.mini { margin-bottom: 4px; }
+.mini-table-link { display: block; width: 100%; margin-top: 8px; padding: 9px 0; background: var(--panel); border: 1px solid var(--border); border-radius: 10px; color: var(--accent); font-size: 13px; font-weight: 600; text-align: center; }
+.mini-table-link:active { opacity: 0.6; }
 .event-row { display: flex; align-items: center; gap: 10px; padding: 9px 6px; border-bottom: 1px solid rgba(35, 43, 54, 0.5); }
 .event-row.away { flex-direction: row-reverse; text-align: right; }
 .event-min { font-weight: 800; font-size: 13px; min-width: 32px; text-align: center; background: var(--panel); border-radius: 7px; padding: 4px 0; }
 .event-icon { display: inline-flex; align-items: center; color: #c7d0dc; flex-shrink: 0; }
 .event-text { display: flex; flex-direction: column; gap: 1px; font-size: 13.5px; min-width: 0; }
 .event-text small { color: var(--muted); font-size: 12px; }
-.match-meta { display: flex; flex-wrap: wrap; gap: 8px 18px; color: var(--muted); font-size: 12.5px; padding: 14px 6px 4px; }
-.match-meta span { display: inline-flex; align-items: center; gap: 5px; }
+
 
 /* Momentum */
 .momentum { background: var(--panel); border-radius: 12px; padding: 12px 12px 8px; margin-bottom: 6px; }
