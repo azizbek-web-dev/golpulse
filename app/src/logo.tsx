@@ -43,7 +43,8 @@ export function LogoMark({ size = 22 }: { size?: number }) {
 /**
  * Fullscreen rejimda tepa markazda chiqadigan logotip.
  * Telegram tugmalari (chapda «Yopish», o'ngda ⋮) orasidagi bo'sh zonaga tushadi.
- * CSS: faqat html[data-tg-fs='1'] da ko'rinadi, balandligi --tg-inset-top,
+ * CSS: faqat html[data-tg-fs='1'] da ko'rinadi; pozitsiya — status paneli
+ * ostidagi tugmalar qatori zonasi (top: --tg-safe-top, height: --tg-content-top),
  * pointer-events: none — hech narsani to'smaydi.
  */
 export function FullscreenLogo() {

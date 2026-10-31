@@ -28,7 +28,9 @@ export function inTelegram(): boolean {
 const ZERO: TgInsets = { top: 0, bottom: 0, left: 0, right: 0 }
 
 /**
- * Safe-area insetlarni CSS o'zgaruvchilarga yozadi (--tg-inset-top/bottom).
+ * Safe-area insetlarni CSS o'zgaruvchilarga yozadi (--tg-inset-top/bottom —
+ * kontent bo'shlig'i uchun jami qiymat; --tg-safe-top/--tg-content-top —
+ * fullscreen logotipi qatori uchun alohida).
  * Fullscreen rejimda Telegram tugmalari (X / ⋮) kontent USTIDA suzib turadi:
  * kerakli bo'shliq = qurilma safe-area + Telegram UI content inset.
  * Oddiy rejimda inset 0 — Telegram paneli o'zi joy ajratadi, layout o'zgarmaydi.
@@ -42,6 +44,19 @@ function syncInsets(w: TgWebApp) {
   const bottom = fs ? (safe.bottom || 0) + (content.bottom || 0) : 0
   root.style.setProperty('--tg-inset-top', `${top}px`)
   root.style.setProperty('--tg-inset-bottom', `${bottom}px`)
+  // Logotip qatori uchun alohida qiymatlar: Telegram tugmalari (suzuvchi pill
+  // lar) status paneli OSTIDAGI content zonasida turadi, shuning uchun
+  // logotip butun inset o'rtasida emas, aynan shu zona markazida bo'lishi
+  // kerak: top = safe-area (status paneli), height = content inset.
+  // Content inset 0 bo'lsa (eski klient) — eski holat: butun inset markazi.
+  let logoTop = fs ? safe.top || 0 : 0
+  let logoHeight = fs ? content.top || 0 : 0
+  if (fs && logoHeight === 0 && top > 0) {
+    logoTop = 0
+    logoHeight = top
+  }
+  root.style.setProperty('--tg-safe-top', `${logoTop}px`)
+  root.style.setProperty('--tg-content-top', `${logoHeight}px`)
   // Fullscreen belgisi — CSS shu orqali tepa markazdagi logotipni ko'rsatadi
   root.setAttribute('data-tg-fs', fs ? '1' : '0')
 }

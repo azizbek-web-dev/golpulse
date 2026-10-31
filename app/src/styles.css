@@ -31,7 +31,7 @@ h3 { margin: 0; }
    tushadi. Faqat fullscreen da (html[data-tg-fs='1']) ko'rinadi; oddiy rejimda
    Telegram panelidagi nom bor — ikki qavat bo'lmasin deb yashirin.
    pointer-events: none — hech qanday elementni to'smaydi. */
-.fs-logo { position: fixed; top: 0; left: 0; right: 0; height: var(--tg-inset-top, 0px); display: none; align-items: center; justify-content: center; gap: 6px; pointer-events: none; z-index: 50; }
+.fs-logo { position: fixed; top: var(--tg-safe-top, 0px); left: 0; right: 0; height: var(--tg-content-top, var(--tg-inset-top, 0px)); display: none; align-items: center; justify-content: center; gap: 6px; pointer-events: none; z-index: 50; }
 html[data-tg-fs='1'] .fs-logo { display: flex; }
 .fs-logo-text { font-size: 17px; font-weight: 700; letter-spacing: 0.3px; color: var(--text); line-height: 1; }
 .fs-logo-accent { color: var(--accent); background: linear-gradient(92deg, #00FF88, #00C853); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
