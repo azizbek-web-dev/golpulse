@@ -1,0 +1,10 @@
+[Unit]
+Description=GolPulse WebApp URL versiyasini jonli bundle bilan sinxronlash
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /home/hatch/workspace/golpulse/bot/set_webapp_url.py
+Environment=https_proxy=http://hatch-egress-proxy:3128
+Environment=http_proxy=http://hatch-egress-proxy:3128

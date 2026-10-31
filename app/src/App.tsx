@@ -85,15 +85,14 @@ export default function App() {
   return (
     <NavContext.Provider value={nav}>
       <div className="app">
-        <header className="appbar">
-          {top && !inTelegram() ? (
+        {/* Ilova headeri yo'q: Telegram panelidagi bot nomi yetarli.
+            Faqat oddiy brauzerda (Telegram BackButton yo'q) detail sahifada
+            ixcham orqaga tugmasi chiqadi — logotip/LIVE belgisisiz. */}
+        {top && !inTelegram() && (
+          <div className="backbar">
             <button className="icon-btn back" onClick={back} aria-label="Orqaga"><IconChevronLeft size={26} /></button>
-          ) : (
-            <span className="appbar-spacer" />
-          )}
-          <div className="logo">Gol<span>Pulse</span></div>
-          <span className="live-badge"><span className="live-dot" /> LIVE</span>
-        </header>
+          </div>
+        )}
 
         <main className="content" ref={scrollRef}>
           {top?.name === 'match' && <MatchPage key={top.id} id={top.id} />}

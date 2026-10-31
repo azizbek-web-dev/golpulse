@@ -1,0 +1,10 @@
+[Unit]
+Description=GolPulse WebApp URL sinxronini har 10 daqiqada tekshirish
+
+[Timer]
+OnBootSec=3min
+OnUnitActiveSec=10min
+Unit=golpulse-webapp-url.service
+
+[Install]
+WantedBy=timers.target
