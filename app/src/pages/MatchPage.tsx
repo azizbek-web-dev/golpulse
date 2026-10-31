@@ -43,12 +43,21 @@ function EventRow({ ev, homeId }: { ev: MatchEvent; homeId: string }) {
   )
 }
 
-/** Davr hisobi — shu davrdagi gollar (voqealar oqimidan) */
-function periodScore(evs: MatchEvent[], period: string, homeId: string): [number, number] {
+/**
+ * Davr hisobi — avval taxta ma'lumoti (fid voqealari ba'zan to'liq bo'lmaydi):
+ * 1-bo'lim = HT hisobi, 2-bo'lim = umumiy − HT; bo'lmasa voqealardagi gollar yig'indisi.
+ */
+function periodScore(bundle: MatchBundle, period: string, evs: MatchEvent[]): [number, number] {
+  const m = bundle.match
+  const hasHt = m.htHome !== null && m.htHome !== undefined && m.htAway !== null && m.htAway !== undefined
+  if (period.startsWith('1') && hasHt) return [m.htHome!, m.htAway!]
+  if (period.startsWith('2') && hasHt && m.homeScore != null && m.awayScore != null) {
+    return [m.homeScore - m.htHome!, m.awayScore - m.htAway!]
+  }
   let h = 0, a = 0
   for (const e of evs) {
     if (e.period !== period) continue
-    if (e.type === 'goal' || e.type === 'pen-goal') { if (e.teamId === homeId) h++; else a++ }
+    if (e.type === 'goal' || e.type === 'pen-goal') { if (e.teamId === m.home.id) h++; else a++ }
   }
   return [h, a]
 }
@@ -189,7 +198,7 @@ function EventsTab({ bundle, onShowTable }: { bundle: MatchBundle; onShowTable: 
       )}
       {evs.length === 0 && <div className="empty-note">Bu o'yin uchun voqealar oqimi fidda yo'q</div>}
       {ordered.map((p) => {
-        const [ph, pa] = periodScore(evs, p, match.home.id)
+        const [ph, pa] = periodScore(bundle, p, evs)
         return (
           <div key={p}>
             <div className="half-head"><span>{p} · {ph}–{pa}</span></div>
