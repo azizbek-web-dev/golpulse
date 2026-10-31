@@ -1,12 +1,12 @@
 import { useState } from 'react'
 import { fetchLeague, fetchTable, registerLeague, registerTeam, useFetch } from '../api'
-import { ErrorBox, LeagueLogo, MatchRow, Skeleton, StandingsTable } from '../components'
+import { ErrorBox, LeagueLogo, LeagueSkeleton, MatchRow, StandingsSkeleton, StandingsTable } from '../components'
 import { useNav } from '../nav'
 
 function TableSection({ gameId, onTeam }: { gameId: string; onTeam: (id: string) => void }) {
   const { data, error, loading, reload } = useFetch(() => fetchTable(gameId), [gameId])
   if (data) for (const g of data.groups) for (const r of g.rows) registerTeam(r.team)
-  if (loading) return <Skeleton rows={6} />
+  if (loading) return <StandingsSkeleton />
   if (error) return <ErrorBox onRetry={reload} />
   if (!data) return <div className="empty-note">Bu liga uchun jadval fidda yo'q</div>
   return (
@@ -31,7 +31,7 @@ export default function LeaguePage({ id }: { id: string }) {
     for (const m of [...data.games, ...(data.lastGames ?? [])]) { registerTeam(m.home); registerTeam(m.away) }
   }
 
-  if (loading) return <div className="page detail"><Skeleton rows={6} /></div>
+  if (loading) return <div className="page detail"><LeagueSkeleton /></div>
   if (error || !data) return <div className="page detail"><ErrorBox onRetry={reload} /></div>
 
   const league = data.league

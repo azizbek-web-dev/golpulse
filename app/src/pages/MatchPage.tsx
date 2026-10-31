@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { fetchMatch, registerTeam, teamInfo, useFetch } from '../api'
 import type { LineupPlayer, MatchBundle, MatchEvent } from '../data/types'
-import { Crest, ErrorBox, LeagueLogo, RatingPill, Skeleton, StandingsTable, StarBtn, StatBar, useLiveMinute } from '../components'
+import { Crest, ErrorBox, LeagueLogo, MatchSkeleton, RatingPill, StandingsTable, StarBtn, StatBar, useLiveMinute } from '../components'
 import { IconBall, IconCard, IconMapPin, IconSub, IconTarget } from '../icons'
 import { useNav } from '../nav'
 
@@ -226,7 +226,7 @@ export default function MatchPage({ id }: { id: string }) {
     if (bundle.table) for (const g of bundle.table.groups) for (const r of g.rows) registerTeam(r.team)
   }
 
-  if (loading) return <div className="page detail"><Skeleton rows={7} /></div>
+  if (loading) return <div className="page detail"><MatchSkeleton main={mainTab} sub={subTab} /></div>
   if (error || !bundle) return <div className="page detail"><ErrorBox onRetry={reload} /></div>
 
   const match = bundle.match

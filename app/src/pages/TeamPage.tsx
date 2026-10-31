@@ -1,6 +1,6 @@
 import { fetchTeam, registerTeam, useFetch } from '../api'
 import type { TeamGameRow } from '../data/types'
-import { Crest, ErrorBox, MatchRow, Skeleton, StarBtn } from '../components'
+import { Crest, ErrorBox, MatchRow, StarBtn, TeamSkeleton } from '../components'
 import { IconChevronRight } from '../icons'
 import { useNav } from '../nav'
 
@@ -25,7 +25,7 @@ export default function TeamPage({ id }: { id: string }) {
     if (data.nextMatch) { registerTeam(data.nextMatch.home); registerTeam(data.nextMatch.away) }
   }
 
-  if (loading) return <div className="page detail"><Skeleton rows={6} /></div>
+  if (loading) return <div className="page detail"><TeamSkeleton /></div>
   if (error || !data) {
     return (
       <div className="page detail">

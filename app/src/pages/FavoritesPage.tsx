@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { fetchLive, registerTeam, teamInfo, useFetch } from '../api'
 import type { ApiMatch } from '../data/types'
-import { Crest, ErrorBox, MatchRow, Skeleton } from '../components'
+import { Crest, ErrorBox, MatchListSkeleton, MatchRow } from '../components'
 import { IconSearch, IconStar } from '../icons'
 import { useNav } from '../nav'
 
@@ -54,7 +54,7 @@ export default function FavoritesPage() {
               )
             })}
           </div>
-          {loading && <Skeleton rows={3} />}
+          {loading && <MatchListSkeleton />}
           {error && !data && <ErrorBox onRetry={reload} />}
           {data && (shown.length === 0
             ? <div className="empty-note">Bu filtrda sevimli jamoalar o'yini yo'q</div>

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { fetchSearch, registerLeague, registerTeam, useFetch } from '../api'
-import { Crest, LeagueLogo, MatchRow, Skeleton, StarBtn } from '../components'
+import { Crest, LeagueLogo, MatchRow, SearchSkeleton, StarBtn } from '../components'
 import { IconSearch, IconX } from '../icons'
 import { useNav } from '../nav'
 
@@ -56,7 +56,7 @@ export default function SearchPage() {
         </>
       )}
 
-      {active && loading && <Skeleton rows={3} />}
+      {active && loading && <SearchSkeleton />}
       {active && error && <div className="empty-note">Qidiruvda xatolik — qayta yozib ko'ring</div>}
       {nothing && <div className="empty-note">«{debounced}» bo'yicha hech narsa topilmadi</div>}
 

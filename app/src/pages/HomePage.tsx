@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { fetchLive, registerLeague, registerTeam, useFetch } from '../api'
 import type { ApiMatch } from '../data/types'
-import { ErrorBox, LeagueHeader, MatchRow, Skeleton } from '../components'
+import { ErrorBox, HomeSkeleton, LeagueHeader, MatchRow } from '../components'
 import { IconCalendar } from '../icons'
 import { useNav } from '../nav'
 
@@ -73,7 +73,7 @@ export default function HomePage({ defaultFilter }: { defaultFilter: Filter }) {
         ))}
       </div>
 
-      {loading && <Skeleton rows={6} />}
+      {loading && <HomeSkeleton />}
       {error && !data && <ErrorBox onRetry={reload} />}
 
       {data && groups.length === 0 && <div className="empty-note">Bu filtr bo'yicha o'yinlar yo'q</div>}

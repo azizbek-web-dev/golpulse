@@ -1,5 +1,5 @@
 import { fetchPlayer, registerTeam, useFetch } from '../api'
-import { Crest, ErrorBox, RatingPill, Skeleton } from '../components'
+import { Crest, ErrorBox, PlayerSkeleton, RatingPill } from '../components'
 import { useNav } from '../nav'
 import { RecentRow } from './TeamPage'
 
@@ -18,7 +18,7 @@ export default function PlayerPage({ id }: { id: string }) {
   )
   if (data) registerTeam(data.team)
 
-  if (loading) return <div className="page detail"><Skeleton rows={5} /></div>
+  if (loading) return <div className="page detail"><PlayerSkeleton /></div>
   if (error || !data) {
     return (
       <div className="page detail">

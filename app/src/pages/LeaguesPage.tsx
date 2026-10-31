@@ -1,5 +1,5 @@
 import { fetchLeagues, registerLeague, useFetch } from '../api'
-import { ErrorBox, LeagueLogo, Skeleton } from '../components'
+import { ErrorBox, LeagueLogo, LeaguesSkeleton } from '../components'
 import { IconChevronRight } from '../icons'
 import { useNav } from '../nav'
 
@@ -30,7 +30,7 @@ export default function LeaguesPage() {
   return (
     <div className="page">
       <h2 className="page-title">Ligalar</h2>
-      {loading && <Skeleton rows={6} />}
+      {loading && <LeaguesSkeleton />}
       {error && !data && <ErrorBox onRetry={reload} />}
       {data && live.length > 0 && (
         <>
