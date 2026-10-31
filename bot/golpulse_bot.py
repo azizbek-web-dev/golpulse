@@ -50,6 +50,22 @@ def api(method: str, payload: dict | None = None, timeout: int = 30):
 
 
 def setup_bot() -> None:
+    # Menyu tugmasi BIRINCHI va retry bilan: WebApp URL versiya sinxroni aynan
+    # shu tugmaga tayanadi — proksi uzilishi (Remote end closed) uni o'tkazib
+    # yubormasin, qolgan sozlamalar xato qilsa ham tugma yangilansin.
+    menu_payload = {"menu_button": {
+        "type": "web_app",
+        "text": "⚽ GolPulse",
+        "web_app": {"url": WEBAPP_URL},
+    }}
+    for attempt in range(3):
+        try:
+            api("setChatMenuButton", menu_payload)
+            break
+        except Exception:
+            if attempt == 2:
+                raise
+            time.sleep(4)
     api("setMyCommands", {"commands": [
         {"command": "start", "description": "Ilovani ochish"},
     ]})
@@ -65,11 +81,6 @@ def setup_bot() -> None:
             "Ilovani ochish uchun /start bosing."
         ),
     })
-    api("setChatMenuButton", {"menu_button": {
-        "type": "web_app",
-        "text": "⚽ GolPulse",
-        "web_app": {"url": WEBAPP_URL},
-    }})
     print("[golpulse] bot sozlamalari qo'llandi (commands, description, menu button)", flush=True)
 
 
@@ -91,7 +102,20 @@ def handle_start(chat_id: int, first_name: str = "") -> None:
 
 
 def main() -> None:
-    me = api("getMe")
+    # Ishga tushishda egress proksi vaqtincha uzilsa ("Remote end closed"),
+    # bot darhol yiqilib systemd crash-loop ga tushmasin — getMe retry bilan.
+    me = None
+    last_err: Exception | None = None
+    for attempt in range(12):
+        try:
+            me = api("getMe")
+            break
+        except Exception as e:  # noqa: BLE001
+            last_err = e
+            print(f"[golpulse] getMe urinish {attempt + 1}/12 xato: {e}", file=sys.stderr, flush=True)
+            time.sleep(5)
+    if me is None:
+        raise RuntimeError(f"getMe: barcha urinishlar xato: {last_err}")
     username = me.get("result", {}).get("username", "?")
     print(f"[golpulse] bot ishga tushdi: @{username}; webapp: {WEBAPP_URL}", flush=True)
     try:
