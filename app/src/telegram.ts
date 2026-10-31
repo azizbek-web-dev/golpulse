@@ -42,6 +42,8 @@ function syncInsets(w: TgWebApp) {
   const bottom = fs ? (safe.bottom || 0) + (content.bottom || 0) : 0
   root.style.setProperty('--tg-inset-top', `${top}px`)
   root.style.setProperty('--tg-inset-bottom', `${bottom}px`)
+  // Fullscreen belgisi — CSS shu orqali tepa markazdagi logotipni ko'rsatadi
+  root.setAttribute('data-tg-fs', fs ? '1' : '0')
 }
 
 export function initTelegram() {

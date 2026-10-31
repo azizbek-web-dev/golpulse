@@ -26,6 +26,16 @@ h3 { margin: 0; }
    qolmaslik uchun JS (telegram.ts) yozadigan inset; oddiy rejimda 0. */
 .app { max-width: 480px; margin: 0 auto; background: var(--bg); min-height: 100dvh; display: flex; flex-direction: column; padding-top: var(--tg-inset-top, 0px); }
 
+/* ---- Fullscreen logotipi: tepa inset zonasining markazi ----
+   Telegram tugmalari (chap «Yopish» pill, o'ng ⋮ pill) orasidagi bo'sh joyga
+   tushadi. Faqat fullscreen da (html[data-tg-fs='1']) ko'rinadi; oddiy rejimda
+   Telegram panelidagi nom bor — ikki qavat bo'lmasin deb yashirin.
+   pointer-events: none — hech qanday elementni to'smaydi. */
+.fs-logo { position: fixed; top: 0; left: 0; right: 0; height: var(--tg-inset-top, 0px); display: none; align-items: center; justify-content: center; gap: 6px; pointer-events: none; z-index: 50; }
+html[data-tg-fs='1'] .fs-logo { display: flex; }
+.fs-logo-text { font-size: 17px; font-weight: 800; letter-spacing: 0.2px; color: var(--text); line-height: 1; }
+.fs-logo-accent { color: var(--accent); }
+
 /* ---- Orqaga qatori (faqat brauzer rejimi, detail sahifa) ---- */
 .backbar { display: flex; align-items: center; padding: 6px 8px 0; }
 .live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--live); display: inline-block; animation: pulse 1.4s infinite; }

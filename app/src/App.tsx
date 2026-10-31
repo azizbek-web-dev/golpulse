@@ -3,6 +3,7 @@ import { NavContext, type DetailRoute, type Nav, type TabKey } from './nav'
 import type { TeamStub } from './data/types'
 import { registerTeam } from './api'
 import { tg, inTelegram } from './telegram'
+import { FullscreenLogo } from './logo'
 import { IconActivity, IconBall, IconChevronLeft, IconSearch, IconStar, IconTrophy } from './icons'
 import HomePage from './pages/HomePage'
 import LeaguesPage from './pages/LeaguesPage'
@@ -85,6 +86,9 @@ export default function App() {
   return (
     <NavContext.Provider value={nav}>
       <div className="app">
+        {/* Fullscreen da Telegram tugmalari orasidagi bo'sh markazda logotip
+            chiqadi (faqat fullscreen; oddiy rejimda Telegram nomi yetarli). */}
+        <FullscreenLogo />
         {/* Ilova headeri yo'q: Telegram panelidagi bot nomi yetarli.
             Faqat oddiy brauzerda (Telegram BackButton yo'q) detail sahifada
             ixcham orqaga tugmasi chiqadi — logotip/LIVE belgisisiz. */}
