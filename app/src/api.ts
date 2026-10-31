@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type {
-  LeaguePageData, LeagueStub, LiveData, MatchBundle, PlayerPageData,
+  DayData, LeaguePageData, LeagueStub, LiveData, MatchBundle, PlayerPageData,
   SearchData, TableData, TeamPageData, TeamStub,
 } from './data/types'
 
@@ -16,7 +16,19 @@ async function apiGet<T>(query: string): Promise<T> {
 }
 
 export const fetchLive = () => apiGet<LiveData>('a=live')
-export const fetchMatch = (id: string) => apiGet<MatchBundle>(`a=match&id=${encodeURIComponent(id)}`)
+export const fetchDay = (date: string) => apiGet<DayData>(`a=day&date=${encodeURIComponent(date)}`)
+
+// O'yin qaysi kun ro'yxatida ko'rilgani — o'tgan kun o'yinini ochishda adapter uni shu ishora bilan topadi
+const matchDateHints = new Map<string, string>()
+export function registerMatchDate(id: string, date: string): void {
+  matchDateHints.set(id, date)
+  if (matchDateHints.size > 500) matchDateHints.clear()
+}
+
+export const fetchMatch = (id: string) => {
+  const hint = matchDateHints.get(id)
+  return apiGet<MatchBundle>(`a=match&id=${encodeURIComponent(id)}${hint ? `&date=${encodeURIComponent(hint)}` : ''}`)
+}
 export const fetchTable = (gameId: string) => apiGet<TableData | null>(`a=table&game_id=${encodeURIComponent(gameId)}`)
 export const fetchLeague = (champ: string) => apiGet<LeaguePageData>(`a=league&champ=${encodeURIComponent(champ)}`)
 export const fetchLeagues = () => apiGet<{ leagues: LeagueStub[] }>('a=leagues')

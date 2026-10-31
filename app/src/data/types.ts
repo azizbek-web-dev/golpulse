@@ -67,6 +67,12 @@ export interface LiveData {
   v?: string // adapter kontent hashi — o'zgarmagan javobda qayta render bo'lmaydi
 }
 
+/** Tanlangan kun (a=day) — shakli LiveData bilan bir xil, oraliq -14..+7 kun */
+export interface DayData extends LiveData {
+  date: string // YYYY-MM-DD (Asia/Tashkent)
+  kind: 'today' | 'past' | 'future'
+}
+
 export type EventType = 'goal' | 'pen-goal' | 'yellow' | 'red' | 'sub' | 'pen-missed' | 'chance' | 'info'
 
 export interface MatchEvent {

@@ -6,7 +6,10 @@
  *
  * Endpointlar:
  *   ?a=live                     — bugungi ro'yxat: jonli + rejalashtirilgan + tugagan (liga guruhlari)
+ *   ?a=day&date=YYYY-MM-DD      — tanlangan kun (Asia/Tashkent): o'tgan kun — natijalar,
+ *                                 kelgusi kun — liniya; bugun = live bilan bir xil. Oraliq: -14..+7 kun
  *   ?a=match&id=<gameId>        — o'yin to'plami: hisob taxtasi, voqealar, statistika, tarkiblar, H2H, jadval
+ *                                 (&date=YYYY-MM-DD — natija o'yinini topish uchun kun ishorasi)
  *   ?a=table&game_id=<gameId>   — turnir jadvali (forma bilan)
  *   ?a=league&champ=<ligaId>    — liga sahifasi: o'yinlar + oxirgi natijalar + jadval kaliti
  *   ?a=leagues                  — ligalar katalogi
@@ -617,10 +620,9 @@ function football_games(string $path, int $ttl): array {
     }
     return $out;
 }
-function finished_today(): array {
-    $now = (int)(floor(time() / 300) * 300); // 5 daqiqalik qadamlash — kesh kaliti barqaror bo'lsin
-    $from = strtotime('today midnight');
-    $ch = api_data('/result-champs?sportIds=1&dateFrom=' . $from . '&dateTo=' . $now . '&lng=uz', 120);
+/** Natijalar oynasi: [from,to) oralig'idagi tugagan o'yinlar (result-champs → result-games) */
+function results_for_window(int $from, int $to, int $champTtl, int $gamesTtl): array {
+    $ch = api_data('/result-champs?sportIds=1&dateFrom=' . $from . '&dateTo=' . $to . '&lng=uz', $champTtl);
     $ids = []; $countryOf = [];
     if (is_array($ch)) foreach ($ch as $country) {
         foreach (($country['subChamps'] ?? []) as $sub) {
@@ -646,7 +648,7 @@ function finished_today(): array {
     $ids = $picked;
     if (!$ids) return [];
     $param = implode(',', array_column($ids, 'id'));
-    $data = api_data('/result-games?champIds=' . $param . '&dateFrom=' . $from . '&dateTo=' . $now . '&lng=uz', 60);
+    $data = api_data('/result-games?champIds=' . $param . '&dateFrom=' . $from . '&dateTo=' . $to . '&lng=uz', $gamesTtl);
     $out = [];
     if (is_array($data)) foreach ($data as $g) {
         if ((int)($g['sportId'] ?? 1) !== 1) continue;
@@ -672,7 +674,130 @@ function finished_today(): array {
         ];
     }
     usort($out, function ($a, $b) { return $b['startTs'] <=> $a['startTs']; });
-    return array_slice($out, 0, 80);
+    return array_slice($out, 0, 120);
+}
+function finished_today(): array {
+    $now = (int)(floor(time() / 300) * 300); // 5 daqiqalik qadamlash — kesh kaliti barqaror bo'lsin
+    return results_for_window(strtotime('today midnight'), $now, 120, 60);
+}
+
+/** O'yin qatorlarini LiveData shaklidagi liga guruhlariga yig'ish (kun ko'rinishi uchun) */
+function group_rows(array $rows, array $meta): array {
+    $groups = [];
+    foreach ($rows as $row) {
+        $lid = $row['leagueId'];
+        if (!isset($groups[$lid])) {
+            $m = $meta[$lid] ?? null;
+            $groups[$lid] = [
+                'id' => $lid,
+                'name' => $m['name'] ?? $row['leagueName'],
+                'country' => $m['country'] ?? ($row['country'] ?? ''),
+                'logoUrl' => $m['logoUrl'] ?? null,
+                'countryImageUrl' => $m['countryImageUrl'] ?? null,
+                'games' => [], 'liveCount' => 0,
+            ];
+        }
+        $groups[$lid]['games'][] = $row;
+        if ($row['status'] === 'live' || $row['status'] === 'halftime') $groups[$lid]['liveCount']++;
+    }
+    return array_values($groups);
+}
+
+/** Kelgusi kun liniyasi: line-matches oynasi + chempionatlar bo'yicha to'liq liniya, kunga kesilgan */
+function future_rows_for_day(int $from, int $to): array {
+    $rows = []; $seen = [];
+    $add = function ($r) use (&$rows, &$seen, $from, $to) {
+        if (!$r) return;
+        if (($r['startTs'] ?? 0) < $from || ($r['startTs'] ?? 0) >= $to) return;
+        if (isset($seen[$r['id']])) return;
+        // Bukmeker maxsus bozorlari ("Mezbonlar — Mehmonlar") — real o'yin emas
+        $n1 = $r['home']['name'] ?? ''; $n2 = $r['away']['name'] ?? '';
+        if (stripos($n1, 'Mezbon') !== false || stripos($n2, 'Mezbon') !== false || stripos($n1, 'maxsus') !== false || stripos($n2, 'maxsus') !== false) return;
+        $seen[$r['id']] = true; $rows[] = $r;
+    };
+    foreach (football_games('/line-matches?sport=1&lng=uz', 30) as $r) {
+        // Virtual/esoccer simulyatsiyalari — real liniya emas
+        if (stripos($r['leagueName'], 'Virtual') !== false || stripos($r['leagueName'], 'Esoccer') !== false) continue;
+        $add($r);
+    }
+    // Chempionatlar daraxti: mamlakat guruhlari ichida subLigas — real chempionatlar o'sha yerda
+    $data = api_data('/line-championships?sport=1&lng=uz', 60);
+    $champs = []; $seenChamp = [];
+    $walk = function ($l) use (&$champs, &$seenChamp) {
+        $name = s($l['name'] ?? '');
+        $id = s($l['id'] ?? '');
+        $cnt = (int)($l['gamesCount'] ?? 0);
+        if ($id === '' || $cnt < 2 || isset($seenChamp[$id])) return;
+        foreach (['Alternativ', 'maxsus', 'Statistikasi', 'garovlari', 'Virtual', 'Esoccer', 'eSports', 'Kiber', ' vs '] as $bad) {
+            if (stripos($name, $bad) !== false) return;
+        }
+        // Mamlakat guruhlari (bitta so'zli nom + countryName yo'q: 'Angliya', 'Ispaniya'...) — alohida chempionat emas
+        if (strpos($name, ' ') === false && s($l['countryName'] ?? '') === '') return;
+        $seenChamp[$id] = true;
+        $champs[] = ['id' => $id, 'count' => $cnt, 'top' => !empty($l['isTop']) ? 1 : 0];
+    };
+    if (is_array($data)) foreach ($data as $elem) {
+        foreach (['mainLigas', 'subLigas'] as $k) {
+            foreach (($elem[$k] ?? []) as $l) {
+                $walk($l);
+                foreach (($l['subLigas'] ?? []) as $sub) $walk($sub);
+            }
+        }
+    }
+    usort($champs, function ($a, $b) { return ($b['top'] <=> $a['top']) ?: ($b['count'] <=> $a['count']); });
+    foreach (array_slice($champs, 0, 20) as $c) {
+        if ($c['id'] === '') continue;
+        $d = api_data('/games-by-champ?champId=' . urlencode($c['id']) . '&mode=line&sportId=1&lng=uz', 300);
+        if (!is_array($d)) continue;
+        foreach (($d['games'] ?? []) as $g) $add(match_row($g, $c['id'], $d['liga']['name'] ?? null));
+    }
+    usort($rows, function ($a, $b) { return $a['startTs'] <=> $b['startTs']; });
+    return $rows;
+}
+
+/** Tanlangan kun: bugun = live, o'tgan = natijalar, kelgusi = liniya. Oraliq: -14..+7 (Asia/Tashkent) */
+function action_day(string $date): ?array {
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) return null;
+    $start = strtotime($date . ' 00:00:00');
+    if ($start === false) return null;
+    $diff = (int)round(($start - strtotime('today midnight')) / 86400);
+    if ($diff < -14 || $diff > 7) return null;
+    if ($diff === 0) {
+        $out = action_live();
+        $out['date'] = $date; $out['kind'] = 'today';
+        return $out;
+    }
+    $ttl = $diff < 0 ? 900 : 300;
+    $c = cache_get('day:' . $date, $ttl);
+    if ($c && $c['fresh']) return $c['body'];
+    if ($diff < 0) {
+        $rows = results_for_window($start, $start + 86400, 900, 900);
+        $groups = group_rows($rows, []);
+        usort($groups, function ($a, $b) { return count($b['games']) <=> count($a['games']); });
+        $out = ['leagues' => $groups, 'counts' => ['live' => 0, 'finished' => count($rows), 'scheduled' => 0], 'updatedAt' => time(), 'date' => $date, 'kind' => 'past'];
+    } else {
+        $rows = future_rows_for_day($start, $start + 86400);
+        $groups = group_rows($rows, league_meta_map());
+        $out = ['leagues' => $groups, 'counts' => ['live' => 0, 'finished' => 0, 'scheduled' => count($rows)], 'updatedAt' => time(), 'date' => $date, 'kind' => 'future'];
+    }
+    cache_put('day:' . $date, $out);
+    return $out;
+}
+
+/** Kun ro'yxatidan o'yin qatorini topish (keshlangan kun yoki talab bo'yicha qurib) */
+function find_row_in_day(string $date, string $id, bool $build): ?array {
+    $c = cache_get('day:' . $date, 900);
+    $leagues = is_array($c) ? ($c['body']['leagues'] ?? null) : null;
+    if (!is_array($leagues)) {
+        if (!$build) return null;
+        $start = strtotime($date . ' 00:00:00');
+        if ($start === false) return null;
+        $leagues = group_rows(results_for_window($start, $start + 86400, 900, 900), []);
+    }
+    foreach ($leagues as $g) foreach (($g['games'] ?? []) as $r) {
+        if (($r['id'] ?? '') === $id) return $r;
+    }
+    return null;
 }
 
 function action_live(): array {
@@ -717,7 +842,7 @@ function action_live(): array {
 }
 
 // ---------------- O'yin to'plami ----------------
-function action_match(string $id): ?array {
+function action_match(string $id, ?string $dateHint = null): ?array {
     $detail = api_data('/match-detail?match_id=' . urlencode($id) . '&is_live=1&sport=1&lng=uz', 5);
     $base = null; $isLiveDetail = false;
     if (is_array($detail) && isset($detail['opponent1'])) {
@@ -728,6 +853,17 @@ function action_match(string $id): ?array {
         // Tugagan o'yin (natijalar oilasidan) — asosiy taxtani result yozuvidan yig'amiz
         foreach (finished_today() as $r) {
             if ($r['id'] === $id) { $base = $r; break; }
+        }
+    }
+    if ($base === null) {
+        // O'tgan kun natijasi: avval kun ishorasi bilan (kunni qurib), keyin keshlangan kunlar bo'ylab
+        if ($dateHint && preg_match('/^\d{4}-\d{2}-\d{2}$/', $dateHint)) {
+            $base = find_row_in_day($dateHint, $id, true);
+        }
+        if ($base === null) {
+            for ($i = 1; $i <= 14 && $base === null; $i++) {
+                $base = find_row_in_day(date('Y-m-d', strtotime("-$i days")), $id, false);
+            }
         }
     }
     if ($base === null) {
@@ -996,7 +1132,8 @@ $action = s($_GET['a'] ?? 'live');
 try {
     switch ($action) {
         case 'live': $out = action_live(); break;
-        case 'match': $out = isset($_GET['id']) ? action_match(s($_GET['id'])) : null; break;
+        case 'day': $out = isset($_GET['date']) ? action_day(s($_GET['date'])) : null; break;
+        case 'match': $out = isset($_GET['id']) ? action_match(s($_GET['id']), isset($_GET['date']) ? s($_GET['date']) : null) : null; break;
         case 'table': $out = isset($_GET['game_id']) ? fetch_table(s($_GET['game_id'])) : null; break;
         case 'league': $out = isset($_GET['champ']) ? action_league(s($_GET['champ'])) : null; break;
         case 'leagues': $out = action_leagues(); break;

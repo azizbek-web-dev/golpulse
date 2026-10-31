@@ -247,7 +247,9 @@ export default function MatchPage({ id }: { id: string }) {
     <div className="page detail">
       <div className="match-league-line">
         <LeagueLogo leagueId={match.leagueId} size={16} /> {match.leagueName} · {match.dateLabel}
-        <button className="league-open-link" onClick={() => nav.openLeague(match.leagueId)}>Liga →</button>
+        {!match.leagueId.startsWith('res-') && (
+          <button className="league-open-link" onClick={() => nav.openLeague(match.leagueId)}>Liga →</button>
+        )}
       </div>
       <div className="scoreboard">
         {side(match.home, match.homeScore)}
