@@ -87,9 +87,7 @@ html[data-tg-fs='1'] .fs-logo { display: flex; }
    oddiy rejimda inset 0 — ekran tepasiga yopishadi. Sahifa chetlarigacha
    cho'zilishi uchun yon padding manfiy margin bilan qoplanadi. */
 .chips-bar {
-  position: sticky;
-  top: var(--tg-inset-top, 0px);
-  z-index: 30;
+  /* Sticky YO'Q (foydalanuvchi qarori 2026-10-31): nav sahifa bilan birga tepaga scroll bo'lib ketadi */
   margin: 0 -12px;
   padding: 0 12px;
   background: rgba(14, 17, 22, 0.72);
