@@ -3,6 +3,7 @@ import { NavContext, type DetailRoute, type Nav, type TabKey } from './nav'
 import type { TeamStub } from './data/types'
 import { registerTeam } from './api'
 import { tg, inTelegram } from './telegram'
+import { SubsProvider } from './bell'
 import { FullscreenLogo } from './logo'
 import { IconActivity, IconBall, IconChevronLeft, IconSearch, IconStar, IconTrophy } from './icons'
 import HomePage from './pages/HomePage'
@@ -67,6 +68,20 @@ export default function App() {
     isFav: (teamId) => favMap.has(teamId),
   }), [push, back, goTab, favorites, favMap])
 
+  // Bot xabaridagi deep-link: t.me/golpulse_bot?startapp=match_<id> — o'sha o'yin ochiladi
+  const deepLinkDone = useRef(false)
+  useEffect(() => {
+    if (deepLinkDone.current) return
+    deepLinkDone.current = true
+    try {
+      const sp = tg()?.initDataUnsafe?.start_param
+      if (sp && sp.startsWith('match_')) {
+        const id = sp.slice('match_'.length)
+        if (id) push({ name: 'match', id })
+      }
+    } catch { /* noop */ }
+  }, [push])
+
   // Telegram native BackButton: faqat detail sahifalarda (REJA 3-bo'lim)
   const backRef = useRef(back)
   backRef.current = back
@@ -84,6 +99,7 @@ export default function App() {
   const top = stack[stack.length - 1]
 
   return (
+    <SubsProvider>
     <NavContext.Provider value={nav}>
       <div className="app">
         {/* Fullscreen da Telegram tugmalari orasidagi bo'sh markazda logotip
@@ -125,5 +141,6 @@ export default function App() {
         </nav>
       </div>
     </NavContext.Provider>
+    </SubsProvider>
   )
 }

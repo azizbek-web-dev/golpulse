@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { fetchMatch, registerTeam, teamInfo, useFetch } from '../api'
 import type { LineupPlayer, MatchBundle, MatchEvent } from '../data/types'
 import { Crest, ErrorBox, LeagueLogo, MatchSkeleton, RatingPill, StandingsTable, StarBtn, StatBar, useLiveMinute } from '../components'
+import { BellButton, useSubs } from '../bell'
 import { IconBall, IconCard, IconMapPin, IconSub, IconTarget } from '../icons'
 import { useNav } from '../nav'
 
@@ -208,6 +209,7 @@ function H2HTab({ bundle }: { bundle: MatchBundle }) {
 
 export default function MatchPage({ id }: { id: string }) {
   const nav = useNav()
+  const subs = useSubs()
   const [mainTab, setMainTab] = useState<'game' | 'h2h' | 'table'>('game')
   const [subTab, setSubTab] = useState<'events' | 'stats' | 'lineups'>('events')
   // Polling: jonli/tanaffus — 5s (BetGO web darajasida), tugagan/rejadagi — 60s
@@ -256,10 +258,16 @@ export default function MatchPage({ id }: { id: string }) {
         <div className="score-center">
           <span className={`score-status${match.status === 'live' || match.status === 'halftime' ? ' live' : ''}`}>{statusText}</span>
           {match.htHome !== null && match.htHome !== undefined && <span className="score-ht">1-bo'lim: {match.htHome}:{match.htAway}</span>}
-          <StarBtn active={nav.isFav(match.home.id)} onToggle={() => nav.toggleFav(match.home)} />
+          <div className="score-actions">
+            <StarBtn active={nav.isFav(match.home.id)} onToggle={() => nav.toggleFav(match.home)} />
+            <BellButton match={match} size={21} />
+          </div>
         </div>
         {side(match.away, match.awayScore)}
       </div>
+      {subs.isSub(match.id) && subs.deliverable(match.id) === false && (
+        <div className="sub-note">Xabar kelishi uchun @golpulse_bot da /start bosing</div>
+      )}
 
       <div className="tabs main">
         {([['game', 'O\'yin'], ['h2h', 'H2H'], ['table', 'Jadval']] as const).map(([k, l]) => (

@@ -3,3 +3,7 @@
 app/dist/
 *.log
 __pycache__/
+# Kuzatuv watcheri: maxfiy kalit va lokal holat — repo ga tushmaydi
+bot/watcher-config.json
+bot/notify-state.json
+bot/notify-state.json.tmp

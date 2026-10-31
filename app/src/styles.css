@@ -64,6 +64,15 @@ html[data-tg-fs='1'] .fs-logo { display: flex; }
 .star-btn { color: var(--muted); padding: 4px; line-height: 1; display: inline-flex; align-items: center; justify-content: center; }
 .star-btn svg { display: block; }
 .star-btn.active { color: var(--gold); }
+
+/* ---- Kuzatuv qo'ng'iroqchasi ---- */
+.bell-btn { color: var(--muted); padding: 6px; line-height: 1; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; border-radius: 8px; }
+.bell-btn svg { display: block; }
+.bell-btn.active { color: var(--accent); }
+.score-actions { display: flex; align-items: center; gap: 2px; }
+.sub-note { margin: 8px 2px 0; padding: 8px 12px; background: var(--panel); border: 1px solid var(--border); border-radius: 10px; color: var(--gold); font-size: 13px; text-align: center; }
+.sub-toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(96px + var(--tg-inset-bottom, 0px)); z-index: 90; max-width: min(92vw, 440px); background: #232c38; color: var(--text); border: 1px solid var(--border); border-radius: 12px; padding: 10px 14px; font-size: 13.5px; text-align: center; box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45); animation: toastIn 0.25s ease-out; }
+@keyframes toastIn { from { opacity: 0; transform: translate(-50%, 8px); } to { opacity: 1; transform: translate(-50%, 0); } }
 .row-chevron { color: var(--muted); font-size: 20px; }
 .avatar { width: 42px; height: 42px; border-radius: 50%; background: linear-gradient(135deg, #2b3648, #1b222c); border: 1px solid var(--border); display: inline-flex; align-items: center; justify-content: center; font-weight: 800; font-size: 14px; color: var(--accent); flex-shrink: 0; }
 .avatar.big { width: 64px; height: 64px; font-size: 20px; }
@@ -119,7 +128,7 @@ html[data-tg-fs='1'] .fs-logo { display: flex; }
 .league-flag.hero { font-size: 40px; }
 .league-name { font-weight: 700; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .league-country { font-size: 10px; color: var(--muted); letter-spacing: 0.5px; }
-.match-row { display: flex; width: 100%; text-align: left; padding: 9px 12px; border-bottom: 1px solid rgba(35, 43, 54, 0.6); min-height: 52px; align-items: center; gap: 8px; }
+.match-row { display: flex; width: 100%; text-align: left; padding: 9px 12px; border-bottom: 1px solid rgba(35, 43, 54, 0.6); min-height: 52px; align-items: center; gap: 8px; cursor: pointer; }
 .match-row:last-child { border-bottom: none; }
 .match-row-main { flex: 1; display: flex; flex-direction: column; gap: 5px; min-width: 0; }
 .match-row-team { display: flex; align-items: center; gap: 9px; }

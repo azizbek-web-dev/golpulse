@@ -1,0 +1,16 @@
+[Unit]
+Description=GolPulse kuzatuv watcheri (qo'ng'iroqcha bildirishnomalari)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/hatch/workspace/golpulse/bot
+ExecStart=/usr/bin/python3 /home/hatch/workspace/golpulse/bot/golpulse_notify.py
+Environment=https_proxy=http://hatch-egress-proxy:3128
+Environment=http_proxy=http://hatch-egress-proxy:3128
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

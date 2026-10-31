@@ -16,6 +16,11 @@
  *   ?a=search&q=<matn>          — jamoa/liga/o'yin qidiruvi (o'z indeksi)
  *   ?a=team&clId=<id>           — jamoa sahifasi
  *   ?a=player&game_id=&player=  — o'yinchi sahifasi (o'yin konteksti bilan)
+ *   ?a=sub      (POST)          — kuzatuv obunasi: {initData, match_id, on, meta}
+ *   ?a=subs     (POST)          — {initData} → foydalanuvchining faol obunalari
+ *   ?a=watchdata&key=           — watcher (VM) uchun barcha obunalar (maxfiy kalit)
+ *   ?a=unsub    (POST, key)     — bitta obunani o'chirish (FT tozalash)
+ *   ?a=substate (POST, key)     — watcher yetkazish holatini (confirmed/deliverable) yozadi
  */
 
 error_reporting(0);
@@ -28,7 +33,7 @@ const STATFEED = 'https://kt4wza6ixmsodu.com';  // statistika fidi (playerlogo)
 
 header('Content-Type: application/json; charset=utf-8');
 header('Access-Control-Allow-Origin: ' . GP_ORIGIN);
-header('Access-Control-Allow-Methods: GET, OPTIONS');
+header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type');
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'OPTIONS') { http_response_code(204); exit; }
 
@@ -1126,6 +1131,169 @@ function action_player(string $gameId, string $playerHash): ?array {
     return null;
 }
 
+// ---------------- Kuzatuv obunalari (qo'ng'iroqcha) ----------------
+// Saqlash: subs-data.php — birinchi qatori himoya (php exit) qatori, qolgani JSON:
+// { matchId: { meta: {home, away, league, startTs},
+//              users: { userId: {confirmed: bool, deliverable: null|bool, lastTry: ts} } } }
+// Maxfiylar (bot tokeni, watcher kaliti) gp-secret.php da — `require` bilan o'qiladi,
+// to'g'ridan vebdan chaqirilsa 403 + exit (token hech qachon javobga chiqmaydi).
+function gp_secret(): ?array {
+    $f = __DIR__ . '/gp-secret.php';
+    if (!is_file($f)) return null;
+    $v = require $f;
+    return is_array($v) ? $v : null;
+}
+function json_fail(int $code, string $msg): void {
+    http_response_code($code);
+    echo json_encode(['success' => false, 'message' => $msg], JSON_UNESCAPED_UNICODE);
+    exit;
+}
+/** Telegram initData imzosini tekshirish (HMAC-SHA256). Muvaffaqiyatda user_id, aks holda null */
+function tg_auth_user(string $initData): ?int {
+    if ($initData === '') return null;
+    $secret = gp_secret();
+    $token = s($secret['bot_token'] ?? '');
+    if ($token === '') return null;
+    parse_str($initData, $params);
+    $hash = s($params['hash'] ?? '');
+    if ($hash === '') return null;
+    unset($params['hash']);
+    ksort($params);
+    $pairs = [];
+    foreach ($params as $k => $v) { if (is_string($v)) $pairs[] = $k . '=' . $v; }
+    $secretKey = hash_hmac('sha256', $token, 'WebAppData', true);
+    $calc = hash_hmac('sha256', implode("\n", $pairs), $secretKey);
+    if (!hash_equals($calc, $hash)) return null;
+    $authDate = (int)($params['auth_date'] ?? 0);
+    if ($authDate <= 0 || time() - $authDate > 86400) return null; // 24 soatdan eski initData — rad
+    $user = json_decode(s($params['user'] ?? ''), true);
+    $id = (int)($user['id'] ?? 0);
+    return $id > 0 ? $id : null;
+}
+function subs_path(): string { return __DIR__ . '/subs-data.php'; }
+/** $fn ga o'qilgan obunalar beriladi (o'zgartirilgan massivni qaytarishi kerak) — flock ostida atomik yozuv */
+function subs_update(callable $fn): array {
+    $f = subs_path();
+    $h = @fopen($f, 'c+');
+    if (!$h) return [];
+    flock($h, LOCK_EX);
+    $raw = (string)stream_get_contents($h);
+    $pos = strpos($raw, "\n");
+    $v = json_decode($pos === false ? '' : substr($raw, $pos + 1), true);
+    if (!is_array($v)) $v = [];
+    $v = $fn($v);
+    if (!is_array($v)) $v = [];
+    $payload = "<?php exit('Access denied'); ?>\n" . json_encode($v, JSON_UNESCAPED_UNICODE);
+    ftruncate($h, 0);
+    rewind($h);
+    fwrite($h, $payload);
+    fflush($h);
+    flock($h, LOCK_UN);
+    fclose($h);
+    return $v;
+}
+function subs_load(): array {
+    return subs_update(function ($v) { return $v; });
+}
+function post_body(): array {
+    $v = json_decode((string)file_get_contents('php://input'), true);
+    return is_array($v) ? $v : [];
+}
+function require_watch_key(array $body): void {
+    $secret = gp_secret();
+    $key = s($secret['watch_key'] ?? '');
+    $given = s($body['key'] ?? ($_GET['key'] ?? ''));
+    if ($key === '' || !hash_equals($key, $given)) json_fail(403, 'forbidden');
+}
+/** POST {initData, match_id, on, meta:{home,away,league,startTs}} — obunani yoqish/o'chirish */
+function action_sub(): array {
+    $body = post_body();
+    $uid = tg_auth_user(s($body['initData'] ?? ''));
+    if ($uid === null) json_fail(401, 'auth failed');
+    $matchId = s($body['match_id'] ?? '');
+    if ($matchId === '') json_fail(400, 'match_id required');
+    $on = !empty($body['on']);
+    $deliverable = null;
+    $subs = subs_update(function ($v) use ($body, $matchId, $uid, $on, &$deliverable) {
+        if ($on) {
+            if (!isset($v[$matchId]) || !is_array($v[$matchId])) $v[$matchId] = ['meta' => [], 'users' => []];
+            $meta = is_array($body['meta'] ?? null) ? $body['meta'] : [];
+            $clean = [];
+            foreach (['home', 'away', 'league'] as $k) if (isset($meta[$k])) $clean[$k] = mb_substr(s($meta[$k]), 0, 120, 'UTF-8');
+            if (isset($meta['startTs'])) $clean['startTs'] = (int)$meta['startTs'];
+            if ($clean) $v[$matchId]['meta'] = array_merge(is_array($v[$matchId]['meta'] ?? null) ? $v[$matchId]['meta'] : [], $clean);
+            if (!isset($v[$matchId]['users'][(string)$uid])) {
+                $v[$matchId]['users'][(string)$uid] = ['confirmed' => false, 'deliverable' => null, 'lastTry' => 0];
+            }
+            $deliverable = $v[$matchId]['users'][(string)$uid]['deliverable'] ?? null;
+        } else {
+            if (isset($v[$matchId]['users'][(string)$uid])) unset($v[$matchId]['users'][(string)$uid]);
+            if (isset($v[$matchId]) && empty($v[$matchId]['users'])) unset($v[$matchId]);
+        }
+        return $v;
+    });
+    return ['subscribed' => $on, 'deliverable' => $on ? $deliverable : null];
+}
+/** POST {initData} — joriy foydalanuvchining faol obunalari (UI holati uchun) */
+function action_subs(): array {
+    $body = post_body();
+    $uid = tg_auth_user(s($body['initData'] ?? ''));
+    if ($uid === null) json_fail(401, 'auth failed');
+    $out = [];
+    foreach (subs_load() as $matchId => $rec) {
+        $u = $rec['users'][(string)$uid] ?? null;
+        if ($u !== null) $out[] = ['id' => (string)$matchId, 'deliverable' => $u['deliverable'] ?? null];
+    }
+    return ['subs' => $out];
+}
+/** GET ?a=watchdata&key= — VM watcher uchun barcha faol obunalar */
+function action_watchdata(): array {
+    require_watch_key([]);
+    $out = [];
+    foreach (subs_load() as $matchId => $rec) {
+        $users = [];
+        foreach (($rec['users'] ?? []) as $uid => $u) {
+            $users[(string)$uid] = [
+                'confirmed' => !empty($u['confirmed']),
+                'deliverable' => $u['deliverable'] ?? null,
+                'lastTry' => (int)($u['lastTry'] ?? 0),
+            ];
+        }
+        if ($users) $out[(string)$matchId] = ['meta' => $rec['meta'] ?? [], 'users' => $users];
+    }
+    return ['matches' => $out];
+}
+/** POST {key, match_id, user_id} — bitta obunani o'chirish (watcher: FT dan keyin tozalash) */
+function action_unsub(): array {
+    $body = post_body();
+    require_watch_key($body);
+    $matchId = s($body['match_id'] ?? '');
+    $uid = s($body['user_id'] ?? '');
+    if ($matchId === '' || $uid === '') json_fail(400, 'match_id/user_id required');
+    subs_update(function ($v) use ($matchId, $uid) {
+        if (isset($v[$matchId]['users'][$uid])) unset($v[$matchId]['users'][$uid]);
+        if (isset($v[$matchId]) && empty($v[$matchId]['users'])) unset($v[$matchId]);
+        return $v;
+    });
+    return ['ok' => true];
+}
+/** POST {key, match_id, user_id, confirmed?, deliverable?, lastTry?} — watcher yetkazish holatini yozadi */
+function action_substate(): array {
+    $body = post_body();
+    require_watch_key($body);
+    $matchId = s($body['match_id'] ?? '');
+    $uid = s($body['user_id'] ?? '');
+    if ($matchId === '' || $uid === '') json_fail(400, 'match_id/user_id required');
+    subs_update(function ($v) use ($body, $matchId, $uid) {
+        if (!isset($v[$matchId]['users'][$uid])) return $v;
+        if (array_key_exists('confirmed', $body)) $v[$matchId]['users'][$uid]['confirmed'] = !empty($body['confirmed']);
+        if (array_key_exists('deliverable', $body)) $v[$matchId]['users'][$uid]['deliverable'] = $body['deliverable'] === null ? null : !empty($body['deliverable']);
+        if (isset($body['lastTry'])) $v[$matchId]['users'][$uid]['lastTry'] = (int)$body['lastTry'];
+        return $v;
+    });
+    return ['ok' => true];
+}
+
 // ---------------- Router ----------------
 date_default_timezone_set('Asia/Tashkent');
 $action = s($_GET['a'] ?? 'live');
@@ -1141,6 +1309,11 @@ try {
         case 'team': $out = isset($_GET['clId']) ? action_team(s($_GET['clId'])) : null; break;
         case 'player': $out = (isset($_GET['game_id'], $_GET['player'])) ? action_player(s($_GET['game_id']), s($_GET['player'])) : null; break;
         case 'health': $out = ['ok' => true, 'time' => time()]; break;
+        case 'sub': $out = action_sub(); break;
+        case 'subs': $out = action_subs(); break;
+        case 'watchdata': $out = action_watchdata(); break;
+        case 'unsub': $out = action_unsub(); break;
+        case 'substate': $out = action_substate(); break;
         default: http_response_code(400); $out = null; echo json_encode(['success' => false, 'message' => 'unknown action']); exit;
     }
     if ($out === null) {

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type CSSProperties, type ReactNode, type R
 import type { ApiMatch, LeagueStub, StandingRow, StatLine } from './data/types'
 import { leagueInfo, localCrestFor, localLeagueLogo, teamInfo } from './api'
 import { IconChevronDown, IconChevronUp, IconGrid, IconPin, IconStar } from './icons'
+import { BellButton } from './bell'
 
 /** public/ dagi asset yo'li (Vite base bilan); to'liq URL bo'lsa o'zi qoladi */
 export const asset = (path: string): string =>
@@ -181,7 +182,13 @@ export function MatchRow({ match, onOpen }: { match: ApiMatch; onOpen: (id: stri
     </div>
   )
   return (
-    <button className={`match-row${flash ? ' score-flash' : ''}`} onClick={() => onOpen(match.id)}>
+    <div
+      className={`match-row${flash ? ' score-flash' : ''}`}
+      role="button"
+      tabIndex={0}
+      onClick={() => onOpen(match.id)}
+      onKeyDown={(e) => { if (e.key === 'Enter') onOpen(match.id) }}
+    >
       <div className="match-row-main">
         {row(match.home, match.homeScore)}
         {row(match.away, match.awayScore)}
@@ -190,7 +197,8 @@ export function MatchRow({ match, onOpen }: { match: ApiMatch; onOpen: (id: stri
         {match.status === 'live' && <span className="live-dot" />}
         {st.text}
       </div>
-    </button>
+      <BellButton match={match} />
+    </div>
   )
 }
 
